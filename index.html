@@ -20,11 +20,12 @@
 
         <script id="item-tmpl" type="x-tmpl-mustache">
             <div class="row">
-                <div class="col-md-12">{{makeName}} {{modelDescription}}</div>
+                <div class="col-md-12"><h4>{{makeName}} {{modelDescription}}</h4></div>
             </div>
             <div class="row">
-                <div class="col-md-6">{{#firstImageUrl}}<img src="http://{{firstImageUrl}}_28.JPG">{{/firstImageUrl}}</div>
-                <div class="col-md-6"><h6>{{priceConsumerGross}} EUR</h6></div>
+                <div class="col-md-6">{{location.country}}-{{location.zipCode}} {{location.city}}</div>
+            <!-- <div class="col-md-6">{{#firstImageUrl}}<img src="http://{{firstImageUrl}}_28.JPG">{{/firstImageUrl}}</div> -->
+                <div class="col-md-6"><strong>{{priceConsumerGross}} EUR</strong></div>
             </div>
         </script>
 
