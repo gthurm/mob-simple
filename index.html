@@ -51,9 +51,9 @@
                 .done(function(data) {
                     renderCheckBox("#form-categories", data.categories, "c");
                     renderCheckBox("#form-fuels", data.fuels, "ft");
-                    renderCheckBox("#form-gears", data.gears, "gt");
+                    renderCheckBox("#form-gears", data.gears, "tr");
                     renderCheckBox("#form-colors", data.colors, "ecol");
-                    renderCheckBox("#form-climatisations", data.climatisations, "clim");
+                    renderRadioBox("#form-climatisations", data.climatisations, "clim");
                 });
 
 
@@ -93,6 +93,19 @@
                         var input = $('<input type="checkbox">').attr("name", name).val(item.i);
                         options.append(
                             $('<div class="checkbox">')
+                                .append(
+                                    $('<label>')
+                                        .append(input)
+                                        .append(item.n)));
+                    });
+                }
+
+                function renderRadioBox(id, values, name) {
+                    var options = $(id);
+                    $.each(values, function(index, item) {
+                        var input = $('<input type="radio">').attr("name", name).val(item.i);
+                        options.append(
+                            $('<div class="radio">')
                                 .append(
                                     $('<label>')
                                         .append(input)
