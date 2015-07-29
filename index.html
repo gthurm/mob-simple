@@ -30,24 +30,28 @@
             <div class="row">
                 <div class="col-md-12">
                 {{#powerKw}}
-                	{{powerKw}}kW 
+                	{{powerKw}}kW
 					{{#fv.pw.value}}
 						{{{fv.pw.element}}}
 					{{/fv.pw.value}}
+                    <br>
                 {{/powerKw}}
                 {{#mileage}}
-                	{{mileage}}km 
+                	{{mileage}}km
                 	{{#fv.ml.value}}
                 		{{{fv.ml.element}}}
                 	{{/fv.ml.value}}
+                    <br>
                 {{/mileage}}
                 {{#cubicCapacity}}
-                	{{cubicCapacity}}ccm 
+                	{{cubicCapacity}}ccm
                 	{{#fv.cc.value}}
                 		{{{fv.cc.element}}}
                 	{{/fv.cc.value}}
+                    <br>
                 {{/cubicCapacity}}
                 </div>
+                <div class="col-md-3"><strong>{{priceConsumerGross}} EUR</strong></div>
             </div>
         </script>
 
@@ -129,7 +133,7 @@
                         // pieChart("c-chart",  "catgeory", aggs.c);
                         // pieChart("ft-chart", "fuel",     aggs.ft);
                         // barChart("p-chart",  "price",    aggs.p);
-                        // barChart("pw-chart", "power",    aggs.pw);
+                        barChart("pw-chart", "power",    aggs.pw);
                     }
                 }
 
@@ -157,7 +161,7 @@
                     	if (!num) {
                     		return;
                     	} else {
-	                        return { 
+	                        return {
 	                        	value: num,
 	                        	element: num >= thresholdGood ? renderPositiveValue(num) : (num <= thresholdBad ? renderNegativeValue(num) : ("(" + num + ")"))
 	                        };
@@ -178,7 +182,7 @@
                     	if (!num) {
                     		return;
                     	} else {
-	                        return { 
+	                        return {
 	                        	value: num,
 	                        	element: num <= thresholdGood ? renderPositiveValue(num) : (num >= thresholdBad ? renderNegativeValue(num) : ("(" + num + ")"))
 	                        };
