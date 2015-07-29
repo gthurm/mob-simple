@@ -18,18 +18,35 @@
 
         <script id="item-tmpl" type="x-tmpl-mustache">
             <div class="row">
-                <div class="col-md-12"><h4>{{makeName}} {{modelDescription}}</h4></div>
+                <div class="col-md-12">
+                	<span class="pull-left"><h4>{{makeName}} {{modelDescription}}</h4></span>
+                	<span class="pull-right"><strong>{{priceConsumerGross}} EUR</strong></span>
+                </div>
             </div>
             <div class="row">
-                <div class="col-md-6">{{location.country}}-{{location.zipCode}} {{location.city}}</div>
+                <div class="col-md-12">{{location.country}}-{{location.zipCode}} {{location.city}}</div>
             <!-- <div class="col-md-6">{{#firstImageUrl}}<img src="http://{{firstImageUrl}}_28.JPG">{{/firstImageUrl}}</div> -->
-                <div class="col-md-6"><strong>{{priceConsumerGross}} EUR</strong></div>
             </div>
             <div class="row">
                 <div class="col-md-12">
-                {{#powerKw}}{{powerKw}}kW ({{fv.pw}}){{/powerKw}}
-                {{#mileage}}{{mileage}}km ({{fv.ml}}){{/mileage}}
-                {{#cubicCapacity}}{{cubicCapacity}}ccm ({{fv.cc}}){{/cubicCapacity}}
+                {{#powerKw}}
+                	{{powerKw}}kW 
+					{{#fv.pw.value}}
+						{{{fv.pw.element}}}
+					{{/fv.pw.value}}
+                {{/powerKw}}
+                {{#mileage}}
+                	{{mileage}}km 
+                	{{#fv.ml.value}}
+                		{{{fv.ml.element}}}
+                	{{/fv.ml.value}}
+                {{/mileage}}
+                {{#cubicCapacity}}
+                	{{cubicCapacity}}ccm 
+                	{{#fv.cc.value}}
+                		{{{fv.cc.element}}}
+                	{{/fv.cc.value}}
+                {{/cubicCapacity}}
                 </div>
             </div>
         </script>
@@ -55,11 +72,11 @@
                     url: "http://m.mobile.de/svc/r/Car?_lang=en",
                 })
                 .done(function(data) {
-                    renderCheckBox("#form-categories", data.categories, "c");
-                    renderCheckBox("#form-fuels", data.fuels, "ft");
-                    renderCheckBox("#form-gears", data.gears, "tr");
-                    renderCheckBox("#form-colors", data.colors, "ecol");
-                    renderRadioBox("#form-climatisations", data.climatisations, "clim");
+                    renderCheckBox("form-categories", data.categories, "c", "Categories");
+                    renderCheckBox("form-fuels", data.fuels, "ft", "Fuels");
+                    renderCheckBox("form-gears", data.gears, "tr", "Gears");
+                    renderCheckBox("form-colors", data.colors, "ecol", "Colors");
+                    renderRadioBox("form-climatisations", data.climatisations, "clim", "Climatisations");
                 });
 
 
@@ -98,11 +115,12 @@
 
                         $.each(res.items, function(index, item) {
                             item.fv = {
-                                pw: max(item.powerKw, stats.aggregations.pw),
-                                ml: min(item.mileage, stats.aggregations.ml),
-                                cc: max(item.cubicCapacity, stats.aggregations.cc)
+                                pw: max(item.powerKw, stats.aggregations.pw, 49, 10),
+                                ml: min(item.mileage, stats.aggregations.ml, 20, 60),
+                                cc: max(item.cubicCapacity, stats.aggregations.cc, 49, 10)
                             }
-                            div.append($("<div />").html(Mustache.render(itemTemplate, item)));
+                            console.log(max(item.powerKw, stats.aggregations.pw));
+                            div.append($("<div />").addClass("well").html(Mustache.render(itemTemplate, item)));
                         });
                     }
 
@@ -120,22 +138,67 @@
                     return [key, v[key]];
                 }
 
-                function max(val, percentiles) {
+                function renderPositiveValue(num) {
+            		var icon = $("<span/>").addClass("glyphicon glyphicon-plus").prop("outerHTML");
+            		return $("<strong/>").append($("<span/>").addClass("text-success").html("(" + num + " " + icon + ")")).prop("outerHTML");
+                }
+
+                function renderNegativeValue(num) {
+            		var icon = $("<span/>").addClass("glyphicon glyphicon-minus").prop("outerHTML");
+            		return $("<strong/>").append($("<span/>").addClass("text-warning").html("(" + num + " " + icon + ")")).prop("outerHTML");
+                }
+
+                function max(val, percentiles, thresholdGood, thresholdBad) {
                     if (percentiles)
-                        return percentiles.map(toArray).reduce(function(p, c, i, a) {
+                        var num = percentiles.map(toArray).reduce(function(p, c, i, a) {
                             return val >= c[1]  ? c[0] : p;
                         }, undefined);
+
+                    	if (!num) {
+                    		return;
+                    	} else {
+	                        return { 
+	                        	value: num,
+	                        	element: num >= thresholdGood ? renderPositiveValue(num) : (num <= thresholdBad ? renderNegativeValue(num) : ("(" + num + ")"))
+	                        };
+                    	}
+
                 }
 
-                function min(val, percentiles) {
+                function min(val, percentiles, thresholdGood, thresholdBad) {
                     if (percentiles)
-                        return percentiles.map(toArray).reduce(function(p, c, i, a) {
+                        var num = percentiles.map(toArray).reduce(function(p, c, i, a) {
                             return val <= c[1] ? p : c[0];
                         }, undefined);
+
+                    	if (!num) {
+                    		return;
+                    	}
+
+                    	if (!num) {
+                    		return;
+                    	} else {
+	                        return { 
+	                        	value: num,
+	                        	element: num <= thresholdGood ? renderPositiveValue(num) : (num >= thresholdBad ? renderNegativeValue(num) : ("(" + num + ")"))
+	                        };
+                    	}
                 }
 
-                function renderCheckBox(id, values, name) {
-                    var options = $(id);
+                function renderCheckBox(id, values, name, label) {
+                	var $checkboxGroup = $("#checkboxes");
+                	var $formGroup = $("<div/>").addClass("form-group").html(label);
+                	var $collapseItem = $("<span/>")
+                						.addClass("glyphicon glyphicon-collapse-down pull-right")
+                						.attr("aria-hidden", "true")
+                						.attr("data-toggle", "collapse")
+                						.attr("data-target", "#" + id)
+                						.attr("aria-expanded", "false");
+					var $container = $("<div/>").addClass("collapse").attr("id", id);
+
+					$checkboxGroup.append($formGroup.append($collapseItem, $container));
+
+                    var options = $("#" + id);
                     $.each(values, function(index, item) {
                         var input = $('<input type="checkbox">').attr("name", name).val(item.i);
                         options.append(
@@ -190,7 +253,7 @@
     <body>
         <div class="container-fluid">
             <div class="row">
-                <div class="col-md-4">
+                <div class="col-md-2">
                     <form id="search-form">
                         <input type="hidden" name="_raw" value="1">
                         <input type="hidden" name="vc" value="Car">
@@ -219,28 +282,13 @@
                             <input id="p" name="p" type="text">
                         </div>
 
-                        <div id="form-categories" class="form-group">
-                            Categories
+                        <div id="checkboxes">
+
                         </div>
 
-                        <div id="form-fuels" class="form-group">
-                            Fuels
-                        </div>
-
-                        <div id="form-gears" class="form-group">
-                            Gears
-                        </div>
-
-                        <div id="form-colors" class="form-group">
-                            Exterior colors
-                        </div>
-
-                        <div id="form-climatisations" class="form-group">
-                            Climatisations
-                        </div>
                     </form>
                 </div>
-                <div class="col-md-8">
+                <div class="col-md-5">
                     <div id="charts">
                         <div id="ft-chart"></div>
                         <div id="c-chart"></div>
