@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <title>Alex Simple SRP Test</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
+
+    <!-- HTML5 Shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!-- WARNING: Respond.js doesn't work if you view the page via file:// -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+    <![endif]-->
+
+    <style type="text/css">
+        body {
+            padding-top: 20px;
+        }
+
+        footer {    
+            margin: 50px 0;
+        }    
+    </style>
+
+    <script id="item-tmpl" type="x-tmpl-mustache">
+        <div class="col-md-12">
+            <div class="row">
+                <class="col-md-12"><h4>{{makeName}} {{modelDescription}}</h4></div>
+            </div>
+            <div class="row">
+                <div class="col-md-2">{{#firstImageUrl}}<img src="http://{{firstImageUrl}}_28.JPG" class="pull-left">{{/firstImageUrl}}</div>
+                <div class="col-md-10">{{priceConsumerGross}} EUR</div>
+            </div>
+        </div>
+    </script>
+
+</head>
+
+<body>
+    <!-- Page Content -->
+    <div class="container-fluid">
+        <div class="row">
+
+            <!-- Left Panel -->
+            <div class="col-md-3" id="search-form">
+
+                <!-- Attributes Box -->
+                <div class="well">
+                    <h4>Attributes</h4>
+                    <form class="form-horizontal">
+                        <input type="hidden" name="_raw" value="1">
+                        <input type="hidden" name="vc" value="Car"> 
+
+                        <div class="form-group">
+                            <label for="con" class="col-sm-4 control-label">Condition</label>
+                            <div class="col-sm-8">
+                                <label class="radio-inline">
+                                  <input type="radio" name="con" value=""> Any
+                                </label>
+                                <label class="radio-inline">
+                                  <input type="radio" name="con" value="USED"> Used
+                                </label>
+                                <label class="radio-inline">
+                                  <input type="radio" name="con" value="NEW"> New
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="make" class="col-sm-4 control-label">Make</label>
+                            <div class="col-sm-8">
+                                <select name="mk" id="select-makes" class="form-control">
+                                    <option value="">Any</option>                                
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="p" class="col-sm-4 control-label">Price</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="p" id="p" class="form-control">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="pw" class="col-sm-4 control-label">Power</label>
+                            <div class="col-sm-8">
+                                <input type="text" name="pw" id="pw" class="form-control">
+                            </div>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Fuels Box -->
+                <div class="well">
+                    <form>
+                    <h4>Fuel types</h4>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="checkbox"><label><input id="fuels_PETROL" type="checkbox" name="ft" value="PETROL"> Benzin</label></div>
+                            <div class="checkbox"><label><input id="fuels_DIESEL" type="checkbox" name="ft" value="DIESEL"> Diesel</label></div>
+                            <div class="checkbox"><label><input id="fuels_ELECTRICITY" type="checkbox" name="ft" value="ELECTRICITY"> Elektro</label></div>
+                            <div class="checkbox"><label><input id="fuels_ETHANOL" type="checkbox" name="ft" value="ETHANOL"> Ethanol (FFV, E85 etc.)</label></div>
+                            <div class="checkbox"><label><input id="fuels_HYBRID" type="checkbox" name="ft" value="HYBRID"> Hybrid (Benzin/Elektro)</label></div>
+                            <div class="checkbox"><label><input id="fuels_HYBRID_DIESEL" type="checkbox" name="ft" value="HYBRID_DIESEL"> Hybrid (Diesel/Elektro)</label></div>
+                            <div class="checkbox"><label><input id="fuels_LPG" type="checkbox" name="ft" value="LPG"> Autogas (LPG)</label></div>
+                            <div class="checkbox"><label><input id="fuels_CNG" type="checkbox" name="ft" value="CNG"> Erdgas (CNG)</label></div>
+                            <div class="checkbox"><label><input id="fuels_HYDROGENIUM" type="checkbox" name="ft" value="HYDROGENIUM"> Wasserstoff</label></div>
+                            <div class="checkbox"><label><input id="fuels_OTHER" type="checkbox" name="ft" value="OTHER"> Andere</label></div>
+                        </div>
+                    </div>
+                    </form>
+                </div>
+
+            </div>
+
+            <div class="col-md-9">
+
+                <div id="chartBox" style="display: none;">
+                    <button class="btn btn-primary" type="button" data-toggle="collapse" data-target="#charts" aria-expanded="false" aria-controls="charts">
+                        Show/hide graphs
+                    </button>
+                    <div class="collapse" id="charts">
+                        <div class="well">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div id="ft-chart"></div>
+                                    <div id="c-chart"></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div id="p-chart"></div>
+                                    <div id="pw-chart"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div id="search-result">
+                    <!-- #item-template mustache template filled in here -->
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- jQuery -->
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+
+    <script src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript">google.load('visualization', '1.0', {'packages':['corechart']});</script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.1.3/mustache.min.js"></script>
+
+    <script type="text/javascript">
+        $(function() {
+            
+            var itemTemplate = $("#item-tmpl").html();
+            Mustache.parse(itemTemplate);
+
+            $.ajax({
+                    url: "http://m.mobile.de/svc/r/makes/Car",
+            })
+            .done(function(data) {
+                var options = $("#select-makes");
+                $.each(data.makes, function(index, make) {
+                    options.append($("<option />").val(make.i).text(make.n));
+                });
+            })
+            .fail(function(whatsWrong) {
+                alert(JSON.stringify(whatsWrong));
+            });
+
+
+            $(":input").on("change", function(event) {
+                var q =  $("#search-form :input").filter(function(index, element) {
+                        return $(element).val() != "";
+                }).serializeArray();
+
+                $.ajax({
+                    url: "http://m.mobile.de/svc/s",
+                    data: q
+                }).done(function(response) {
+                    var result = $("#search-result");
+                    result.empty();
+                    $.each(response.items, function(index, item) {
+                        console.log(item);
+                        result.append($("<div />")
+                                .addClass("row")
+                                .html(Mustache.render(itemTemplate, item))
+                              ).append($("<hr/>"));
+                    });
+                });
+
+                $.ajax({
+                    url: "http://m.mobile.de/svc/s?psz=0&aggs=c,ft,p,pw",
+                    data: q
+                }).done(function(response) {
+                    var aggs = response.aggregations;
+                    pieChart("c-chart",  "catgeory", aggs.c);
+                    pieChart("ft-chart", "fuel",     aggs.ft);
+                    barChart("p-chart",  "price",    aggs.p);
+                    barChart("pw-chart", "power",    aggs.pw);
+                    $("#chartBox").show();
+                });
+                event.preventDefault();
+            });
+
+            function pieChart(id, name, values) {
+                var chart = new google.visualization.PieChart(document.getElementById(id));             
+                chart.draw(makeTable(name, values, function(v) {
+                    return [v.key, v.count];
+                }));
+            }
+
+            function barChart(id, name, values) {
+                var chart = new google.visualization.BarChart(document.getElementById(id)); 
+                chart.draw(makeTable(name, values,  function(v) {
+                    var key = Object.keys(v)[0];
+                    return [key + "%", v[key]];
+                }));
+            }
+
+            function makeTable(name, values, mapFn) {
+                var data = new google.visualization.DataTable();
+                data.addColumn("string", name);
+                data.addColumn("number", "#");
+                data.addRows(values.map(mapFn));
+                return data;
+            }
+
+        });
+    </script>
+
+</body>
+
+</html>
