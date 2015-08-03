@@ -83,7 +83,7 @@
             };
 
             var state = {
-                aggs: {}
+                aggs: {"c":[{"key":"Limousine","count":472429},{"key":"EstateCar","count":287053},{"key":"SmallCar","count":219405},{"key":"OffRoad","count":170982},{"key":"Van","count":168570},{"key":"Cabrio","count":80475},{"key":"SportsCar","count":69134},{"key":"OtherCar","count":28473}]}
             };
 
             $(function() {
@@ -93,8 +93,10 @@
 
                 $.ajax({
                     url: "http://m.mobile.de/svc/r/makes/Car",
-                })
-                .done(function(data) {
+                    dataType: "jsonp",
+                    cache: true,
+                    jsonp: "_jsonp"
+                }).done(function(data) {
                     var options = $("#select-makes");
                     $.each(data.makes, function(index, make) {
                         options.append($("<option />").val(make.i).text(make.n));
@@ -103,13 +105,15 @@
 
                 $.ajax({
                     url: "http://m.mobile.de/svc/r/Car?_lang=en",
-                })
-                .done(function(data) {
+                    dataType: "jsonp",
+                    cache: true,
+                    jsonp: "_jsonp"
+                }).done(function(data) {
                     renderCheckBox("form-categories", data.categories, "c", "Categories");
                     renderCheckBox("form-fuels", data.fuels, "ft", "Fuels");
                     renderCheckBox("form-gears", data.gears, "tr", "Gears");
                     renderCheckBox("form-colors", data.colors, "ecol", "Colors");
-                    renderRadioBox("form-climatisations", data.climatisations, "clim", "Climatisations");
+                    renderCheckBox("form-climatisations", data.climatisations, "clim", "Climatisations");
                 });
 
 
@@ -119,25 +123,35 @@
                     event.preventDefault();
                 });
 
-                doSearch();
+                //doSearch();
 
                 var charts = {
                     // pie charts
-                    category:   {draw: function() {
-                        pieChart("chart-area", "category", state.aggs.c);
-                    }},
-                    gear:   {draw: function() {
-                        pieChart("chart-area", "gear", state.aggs.tr);
-                    }},
-                    fuel: {draw: function() {
-                        pieChart("chart-area", "fuel", state.aggs.ft);
-                    }},
-                    color: {draw: function() {
-                        pieChart("chart-area", "color", state.aggs.ecol);
-                    }},
-                    climatisations: {draw: function() {
-                        pieChart("chart-area", "Climatisation", state.aggs.clim);
-                    }},
+                    category: {
+                        draw: function() {
+                            pieChart("chart-area", "category", state.aggs.c);
+                        }
+                    },
+                    gear: {
+                        draw: function() {
+                            pieChart("chart-area", "gear", state.aggs.tr);
+                        }
+                    },
+                    fuel: {
+                        draw: function() {
+                            pieChart("chart-area", "fuel", state.aggs.ft);
+                        }
+                    },
+                    color: {
+                        draw: function() {
+                            pieChart("chart-area", "color", state.aggs.ecol);
+                        }
+                    },
+                    climatisation: {
+                        draw: function() {
+                            pieChart("chart-area", "Climatisation", state.aggs.clim);
+                        }
+                    },
                     // bar charts
                     power: {draw: function() {
                         barChart("chart-area", "power", state.aggs.pw);
@@ -150,15 +164,27 @@
                     }},
                 };
 
-                $(document).on("click", ".chartable", function(event) {
-                    var chart = charts[$(this).data("chart")];
-                    chart.draw();
+                // $(document).on("click", ".chartable", function(event) {
+                //     var chart = charts[$(this).data("chart")];
+                //     chart.draw();
+                // });
+
+                var chartArea = $('<div id="chart-area"></div>');
+                $(".chartable").popover({
+                    html: true,
+                    container: 'body',
+                    content: chartArea
+                }).on('inserted.bs.popover', function() {
+                    var c = $(this).data("chart");
+                    charts[c].draw();
+                }).on('hidden.bs.popover', function() {
+                    $("#chart-area").empty();
                 });
 
                 function doSearch() {
                     var q, search, stats;
 
-                    q =  $("#search-form :input").filter(function(index, element) {
+                    q = $("#search-form :input").filter(function(index, element) {
                                 return $(element).val() != "";
                     }).serializeArray();
 
@@ -297,9 +323,9 @@
                             </div>
 
                             <div class="form-group">
-                                <span class="chartable" data-chart="category">Climatisation</span>
+                                <span class="chartable" data-chart="climatisation">Climatisation</span>
                                 <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-climatisations" aria-expanded="false"></span>
-                                <div class="collapse" id="form-climatisation" aria-expanded="false" style="height: 0px;"></div>
+                                <div class="collapse" id="form-climatisations" aria-expanded="false" style="height: 0px;"></div>
                             </div>
 
                             <div class="form-group">
@@ -318,7 +344,6 @@
                     </form>
                 </div>
                 <div class="col-md-5">
-                    <div id="chart-area"></div>
                     <div id="search-result-head"><h4>Results <span id="num-search-results" class="badge"></span></h4></div>
                     <div id="search-result" class="container-fluid"></div>
                 </div>
