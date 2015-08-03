@@ -114,6 +114,7 @@
 
 
                 $(document).on("change", "#search-form :input", function(event) {
+                    $("#chart-area").empty();
                     doSearch();
                     event.preventDefault();
                 });
@@ -162,7 +163,7 @@
                     }).serializeArray();
 
                     search = $.ajax({
-                        url: "http://m.mobile.de/svc/s",
+                        url: "http://m.mobile.de/svc/s?psz=50",
                         data: q
                     });
 
