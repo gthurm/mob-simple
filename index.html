@@ -18,45 +18,74 @@
 
         <script id="item-tmpl" type="x-tmpl-mustache">
             <div class="row">
-                <div class="col-md-12">
-                	<span class="pull-left"><h4>{{makeName}} {{modelDescription}}</h4></span>
-                	<span class="pull-right"><strong>{{priceConsumerGross}} EUR</strong></span>
+                <div class="col-md-10">
+                    <strong>{{makeName}} {{modelDescription}}</strong>
+                </div>
+                <div class="col-md-2">
+                    <span class="pull-right"><strong>{{priceConsumerGross}} EUR</strong></span>
                 </div>
             </div>
             <div class="row">
                 <div class="col-md-12">{{location.country}}-{{location.zipCode}} {{location.city}}</div>
-            <!-- <div class="col-md-6">{{#firstImageUrl}}<img src="http://{{firstImageUrl}}_28.JPG">{{/firstImageUrl}}</div> -->
             </div>
             <div class="row">
                 <div class="col-md-12">
-                {{#powerKw}}
-                	{{powerKw}}kW
-					{{#fv.pw.value}}
-						{{{fv.pw.element}}}
-					{{/fv.pw.value}}
-                    <br>
-                {{/powerKw}}
-                {{#mileage}}
-                	{{mileage}}km
-                	{{#fv.ml.value}}
-                		{{{fv.ml.element}}}
-                	{{/fv.ml.value}}
-                    <br>
-                {{/mileage}}
-                {{#cubicCapacity}}
-                	{{cubicCapacity}}ccm
-                	{{#fv.cc.value}}
-                		{{{fv.cc.element}}}
-                	{{/fv.cc.value}}
-                    <br>
-                {{/cubicCapacity}}
+                    {{#powerKw}}
+                    <div{{#fv.pw}} class="text-danger"{{/fv.pw}}>
+                        {{powerKw}}kW
+                    </div>
+                    {{/powerKw}}
+
+                    {{#cubicCapacity}}
+                    <div{{#fv.cc}} class="text-danger"{{/fv.cc}}>
+                        {{cubicCapacity}}ccm
+                    </div>
+                    {{/cubicCapacity}}
+
+                    {{#mileage}}
+                    <div{{#fv.ml}} class="text-danger"{{/fv.ml}}>
+                        {{mileage}}km
+                    </div>
+                    {{/mileage}}
                 </div>
-                <div class="col-md-3"><strong>{{priceConsumerGross}} EUR</strong></div>
             </div>
         </script>
 
 
         <script type="text/javascript">
+            var P = {
+
+                toArray: function (v) {
+                    var key = Object.keys(v)[0];
+                    return [key, v[key]];
+                },
+
+                pmax: function(val, percentiles) {
+                    if (!percentiles) return;
+                    var max = [0, 0];
+                    $.each(percentiles.map(this.toArray), function(i, p) {
+                        if (val > max[1] || val >= p[1]) max = p;
+                    });
+                    return max;
+                },
+
+                lessThan: function(threshold) {
+                    return function (perc) {
+                        return perc[0] <= threshold;
+                    };
+                },
+
+                greaterThan: function(threshold) {
+                    return function (perc) {
+                        return perc[0] >= threshold;
+                    };
+                }
+            };
+
+            var state = {
+                aggs: {}
+            };
+
             $(function() {
 
                 var itemTemplate = $("#item-tmpl").html();
@@ -91,6 +120,40 @@
 
                 doSearch();
 
+                var charts = {
+                    // pie charts
+                    category:   {draw: function() {
+                        pieChart("chart-area", "category", state.aggs.c);
+                    }},
+                    gear:   {draw: function() {
+                        pieChart("chart-area", "gear", state.aggs.tr);
+                    }},
+                    fuel: {draw: function() {
+                        pieChart("chart-area", "fuel", state.aggs.ft);
+                    }},
+                    color: {draw: function() {
+                        pieChart("chart-area", "color", state.aggs.ecol);
+                    }},
+                    climatisations: {draw: function() {
+                        pieChart("chart-area", "Climatisation", state.aggs.clim);
+                    }},
+                    // bar charts
+                    power: {draw: function() {
+                        barChart("chart-area", "power", state.aggs.pw);
+                    }},
+                    price: {draw: function() {
+                        barChart("chart-area", "price", state.aggs.p);
+                    }},
+                    cubicCapacity: {draw: function() {
+                        barChart("chart-area", "category", state.aggs.cc);
+                    }},
+                };
+
+                $(document).on("click", ".chartable", function(event) {
+                    var chart = charts[$(this).data("chart")];
+                    chart.draw();
+                });
+
                 function doSearch() {
                     var q, search, stats;
 
@@ -104,13 +167,13 @@
                     });
 
                     stats = $.ajax({
-                        url: "http://m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml",
+                        url: "http://m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml,ecol,tr,clim",
                         data: q
                     });
 
                     $.when(search, stats).done(function(r1, r2) {
                         handleSearch(r1[0], r2[0]);
-                        handleStats(r2[0]);
+                        state.aggs = r2[0].aggregations;
                     });
 
                     function handleSearch(res, stats) {
@@ -119,89 +182,23 @@
 
                         $.each(res.items, function(index, item) {
                             item.fv = {
-                                pw: max(item.powerKw, stats.aggregations.pw, 49, 10),
-                                ml: min(item.mileage, stats.aggregations.ml, 20, 60),
-                                cc: max(item.cubicCapacity, stats.aggregations.cc, 49, 10)
+                                pw: mark(item.powerKw, stats.aggregations.pw, P.greaterThan(95)),
+                                cc: mark(item.cubicCapacity, stats.aggregations.cc, P.greaterThan(95)),
+                                ml: mark(item.mileage, stats.aggregations.ml, P.lessThan(20))
                             }
-                            console.log(max(item.powerKw, stats.aggregations.pw));
                             div.append($("<div />").addClass("well").html(Mustache.render(itemTemplate, item)));
                         });
                     }
-
-                    function handleStats(response) {
-                        var aggs = response.aggregations;
-                        // pieChart("c-chart",  "catgeory", aggs.c);
-                        // pieChart("ft-chart", "fuel",     aggs.ft);
-                        // barChart("p-chart",  "price",    aggs.p);
-                        barChart("pw-chart", "power",    aggs.pw);
-                    }
                 }
 
-                function toArray(v) {
-                    var key = Object.keys(v)[0];
-                    return [key, v[key]];
-                }
-
-                function renderPositiveValue(num) {
-            		var icon = $("<span/>").addClass("glyphicon glyphicon-plus").prop("outerHTML");
-            		return $("<strong/>").append($("<span/>").addClass("text-success").html("(" + num + " " + icon + ")")).prop("outerHTML");
-                }
-
-                function renderNegativeValue(num) {
-            		var icon = $("<span/>").addClass("glyphicon glyphicon-minus").prop("outerHTML");
-            		return $("<strong/>").append($("<span/>").addClass("text-warning").html("(" + num + " " + icon + ")")).prop("outerHTML");
-                }
-
-                function max(val, percentiles, thresholdGood, thresholdBad) {
-                    if (percentiles)
-                        var num = percentiles.map(toArray).reduce(function(p, c, i, a) {
-                            return val >= c[1]  ? c[0] : p;
-                        }, undefined);
-
-                    	if (!num) {
-                    		return;
-                    	} else {
-	                        return {
-	                        	value: num,
-	                        	element: num >= thresholdGood ? renderPositiveValue(num) : (num <= thresholdBad ? renderNegativeValue(num) : ("(" + num + ")"))
-	                        };
-                    	}
-
-                }
-
-                function min(val, percentiles, thresholdGood, thresholdBad) {
-                    if (percentiles)
-                        var num = percentiles.map(toArray).reduce(function(p, c, i, a) {
-                            return val <= c[1] ? p : c[0];
-                        }, undefined);
-
-                    	if (!num) {
-                    		return;
-                    	}
-
-                    	if (!num) {
-                    		return;
-                    	} else {
-	                        return {
-	                        	value: num,
-	                        	element: num <= thresholdGood ? renderPositiveValue(num) : (num >= thresholdBad ? renderNegativeValue(num) : ("(" + num + ")"))
-	                        };
-                    	}
+                function mark(val, percentiles, predicate) {
+                    var perc = P.pmax(val, percentiles);
+                    if (predicate(perc)) return {
+                        p: perc
+                    };
                 }
 
                 function renderCheckBox(id, values, name, label) {
-                	var $checkboxGroup = $("#checkboxes");
-                	var $formGroup = $("<div/>").addClass("form-group").html(label);
-                	var $collapseItem = $("<span/>")
-                						.addClass("glyphicon glyphicon-collapse-down pull-right")
-                						.attr("aria-hidden", "true")
-                						.attr("data-toggle", "collapse")
-                						.attr("data-target", "#" + id)
-                						.attr("aria-expanded", "false");
-					var $container = $("<div/>").addClass("collapse").attr("id", id);
-
-					$checkboxGroup.append($formGroup.append($collapseItem, $container));
-
                     var options = $("#" + id);
                     $.each(values, function(index, item) {
                         var input = $('<input type="checkbox">').attr("name", name).val(item.i);
@@ -263,11 +260,10 @@
                         <input type="hidden" name="vc" value="Car">
 
                         <div class="form-group">
-                            <input type="radio" name="con" value="">Any
-                            <input type="radio" name="con" value="USED">Used
-                            <input type="radio" name="con" value="NEW">New
+                            <input type="radio" name="con" value=""> Any
+                            <input type="radio" name="con" value="USED"> Used
+                            <input type="radio" name="con" value="NEW"> New
                         </div>
-
 
                         <div class="form-group">
                             Make
@@ -287,18 +283,41 @@
                         </div>
 
                         <div id="checkboxes">
+                            <div class="form-group">
+                                <span class="chartable" data-chart="category">Categories</span>
+                                <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-categories" aria-expanded="false"></span>
+                                <div class="collapse" id="form-categories" aria-expanded="false" style="height: 0px;"></div>
+                            </div>
 
+                            <div class="form-group">
+                                <span class="chartable" data-chart="fuel">Fuels</span>
+                                <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-fuels" aria-expanded="false"></span>
+                                <div class="collapse" id="form-fuels" aria-expanded="false" style="height: 0px;"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <span class="chartable" data-chart="category">Climatisation</span>
+                                <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-climatisations" aria-expanded="false"></span>
+                                <div class="collapse" id="form-climatisation" aria-expanded="false" style="height: 0px;"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <span class="chartable" data-chart="gear">Gears</span>
+                                <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-gears" aria-expanded="false"></span>
+                                <div class="collapse" id="form-gears" aria-expanded="false" style="height: 0px;"></div>
+                            </div>
+
+                            <div class="form-group">
+                                <span class="chartable" data-chart="color">Colors</span>
+                                <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-colors" aria-expanded="false"></span>
+                                <div class="collapse" id="form-colors" aria-expanded="false" style="height: 0px;"></div>
+                            </div>
                         </div>
 
                     </form>
                 </div>
                 <div class="col-md-5">
-                    <div id="charts">
-                        <div id="ft-chart"></div>
-                        <div id="c-chart"></div>
-                        <div id="p-chart"></div>
-                        <div id="pw-chart"></div>
-                    </div>
+                    <div id="chart-area"></div>
                     <div id="search-result-head"><h4>Results <span id="num-search-results" class="badge"></span></h4></div>
                     <div id="search-result" class="container-fluid"></div>
                 </div>
