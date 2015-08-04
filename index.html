@@ -59,203 +59,41 @@
 
 
         <script type="text/javascript">
-            var P = {
-
-                toArray: function (v) {
-                    var key = Object.keys(v)[0];
-                    return [key, v[key]];
-                },
-
-                pmax: function(val, percentiles) {
-                    if (!percentiles) return;
-                    var max = [0, 0];
-                    $.each(percentiles.map(this.toArray), function(i, p) {
-                        if (val > max[1] || val >= p[1]) max = p;
-                    });
-                    return max;
-                },
-
-                lessThan: function(threshold) {
-                    return function (perc) {
-                        return perc[0] <= threshold;
-                    };
-                },
-
-                greaterThan: function(threshold) {
-                    return function (perc) {
-                        return perc[0] >= threshold;
-                    };
-                }
-            };
-
-            var state = {
-                aggs: {"c":[{"key":"Limousine","count":472429},{"key":"EstateCar","count":287053},{"key":"SmallCar","count":219405},{"key":"OffRoad","count":170982},{"key":"Van","count":168570},{"key":"Cabrio","count":80475},{"key":"SportsCar","count":69134},{"key":"OtherCar","count":28473}]}
-            };
-
-            $(function() {
-
-                var itemTemplate = $("#item-tmpl").html();
-                Mustache.parse(itemTemplate);
-
-                $.ajax({
-                    url: "http://m.mobile.de/svc/r/makes/Car",
-                    dataType: "jsonp",
-                    cache: true,
-                    jsonp: "_jsonp"
-                }).done(function(data) {
-                    var options = $("#select-makes");
-                    $.each(data.makes, function(index, make) {
-                        options.append($("<option />").val(make.i).text(make.n));
-                    });
-                });
-
-                $.ajax({
-                    url: "http://m.mobile.de/svc/r/Car?_lang=en",
-                    dataType: "jsonp",
-                    cache: true,
-                    jsonp: "_jsonp"
-                }).done(function(data) {
-                    renderCheckBox("form-categories", data.categories, "c", "Categories");
-                    renderCheckBox("form-fuels", data.fuels, "ft", "Fuels");
-                    renderCheckBox("form-gears", data.gears, "tr", "Gears");
-                    renderCheckBox("form-colors", data.colors, "ecol", "Colors");
-                    renderCheckBox("form-climatisations", data.climatisations, "clim", "Climatisations");
-                });
-
-
-                $(document).on("change", "#search-form :input", function(event) {
-                    $("#chart-area").empty();
-                    doSearch();
-                    event.preventDefault();
-                });
-
-                //doSearch();
-
-                var charts = {
-                    // pie charts
-                    category: {
-                        draw: function() {
-                            pieChart("chart-area", "category", state.aggs.c);
-                        }
+            var math = (function() {
+                return {
+                    toArray: function (v) {
+                        var key = Object.keys(v)[0];
+                        return [key, v[key]];
                     },
-                    gear: {
-                        draw: function() {
-                            pieChart("chart-area", "gear", state.aggs.tr);
-                        }
-                    },
-                    fuel: {
-                        draw: function() {
-                            pieChart("chart-area", "fuel", state.aggs.ft);
-                        }
-                    },
-                    color: {
-                        draw: function() {
-                            pieChart("chart-area", "color", state.aggs.ecol);
-                        }
-                    },
-                    climatisation: {
-                        draw: function() {
-                            pieChart("chart-area", "Climatisation", state.aggs.clim);
-                        }
-                    },
-                    // bar charts
-                    power: {draw: function() {
-                        barChart("chart-area", "power", state.aggs.pw);
-                    }},
-                    price: {draw: function() {
-                        barChart("chart-area", "price", state.aggs.p);
-                    }},
-                    cubicCapacity: {draw: function() {
-                        barChart("chart-area", "category", state.aggs.cc);
-                    }},
-                };
 
-                // $(document).on("click", ".chartable", function(event) {
-                //     var chart = charts[$(this).data("chart")];
-                //     chart.draw();
-                // });
-
-                var chartArea = $('<div id="chart-area"></div>');
-                $(".chartable").popover({
-                    html: true,
-                    container: 'body',
-                    content: chartArea
-                }).on('inserted.bs.popover', function() {
-                    var c = $(this).data("chart");
-                    charts[c].draw();
-                }).on('hidden.bs.popover', function() {
-                    $("#chart-area").empty();
-                });
-
-                function doSearch() {
-                    var q, search, stats;
-
-                    q = $("#search-form :input").filter(function(index, element) {
-                                return $(element).val() != "";
-                    }).serializeArray();
-
-                    search = $.ajax({
-                        url: "http://m.mobile.de/svc/s?psz=50",
-                        data: q
-                    });
-
-                    stats = $.ajax({
-                        url: "http://m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml,ecol,tr,clim",
-                        data: q
-                    });
-
-                    $.when(search, stats).done(function(r1, r2) {
-                        handleSearch(r1[0], r2[0]);
-                        state.aggs = r2[0].aggregations;
-                    });
-
-                    function handleSearch(res, stats) {
-                        $("#num-search-results").text(res.numResultsTotal);
-                        var div = $("#search-result").empty();
-
-                        $.each(res.items, function(index, item) {
-                            item.fv = {
-                                pw: mark(item.powerKw, stats.aggregations.pw, P.greaterThan(95)),
-                                cc: mark(item.cubicCapacity, stats.aggregations.cc, P.greaterThan(95)),
-                                ml: mark(item.mileage, stats.aggregations.ml, P.lessThan(20))
-                            }
-                            div.append($("<div />").addClass("well").html(Mustache.render(itemTemplate, item)));
+                    pmax: function(val, percentiles) {
+                        if (!percentiles) return;
+                        var max = [0, 0];
+                        $.each(percentiles.map(this.toArray), function(i, p) {
+                            if (val > max[1] || val >= p[1]) max = p;
                         });
+                        return max;
+                    },
+
+                    lessThan: function(threshold) {
+                        return function (perc) {
+                            return perc[0] <= threshold;
+                       };
+                    },
+
+                    greaterThan: function(threshold) {
+                        return function (perc) {
+                            return perc[0] >= threshold;
+                        };
                     }
-                }
+                };
+            })();
 
-                function mark(val, percentiles, predicate) {
-                    var perc = P.pmax(val, percentiles);
-                    if (predicate(perc)) return {
-                        p: perc
-                    };
-                }
 
-                function renderCheckBox(id, values, name, label) {
-                    var options = $("#" + id);
-                    $.each(values, function(index, item) {
-                        var input = $('<input type="checkbox">').attr("name", name).val(item.i);
-                        options.append(
-                            $('<div class="checkbox">')
-                                .append(
-                                    $('<label>')
-                                        .append(input)
-                                        .append(item.n)));
-                    });
-                }
+            var charts = (function() {
 
-                function renderRadioBox(id, values, name) {
-                    var options = $(id);
-                    $.each(values, function(index, item) {
-                        var input = $('<input type="radio">').attr("name", name).val(item.i);
-                        options.append(
-                            $('<div class="radio">')
-                                .append(
-                                    $('<label>')
-                                        .append(input)
-                                        .append(item.n)));
-                    });
-                }
+                var data = {"c":[{"key":"Limousine","count":472429},{"key":"EstateCar","count":287053},{"key":"SmallCar","count":219405},{"key":"OffRoad","count":170982},{"key":"Van","count":168570},{"key":"Cabrio","count":80475},{"key":"SportsCar","count":69134},{"key":"OtherCar","count":28473}]};
+
 
                 function pieChart(id, name, values) {
                     var chart = new google.visualization.PieChart(document.getElementById(id));
@@ -280,6 +118,164 @@
                     return data;
                 }
 
+                return {
+
+                    setData: function(newData) {
+                        data = newData;
+                    },
+
+                    // pie charts
+                    category: {
+                        draw: function() {
+                            pieChart("chart-area", "category", data.c);
+                        }
+                    },
+                    gear: {
+                        draw: function() {
+                            pieChart("chart-area", "gear", data.tr);
+                        }
+                    },
+                    fuel: {
+                        draw: function() {
+                            pieChart("chart-area", "fuel", data.ft);
+                        }
+                    },
+                    color: {
+                        draw: function() {
+                            pieChart("chart-area", "color", data.ecol);
+                        }
+                    },
+                    climatisation: {
+                        draw: function() {
+                            pieChart("chart-area", "Climatisation", data.clim);
+                        }
+                    },
+
+                    // bar charts
+                    power: {
+                        draw: function() {
+                            barChart("chart-area", "power", data.pw);
+                        }
+                    },
+                    price: {
+                        draw: function() {
+                            barChart("chart-area", "price", data.p);
+                        }
+                    },
+                    cubicCapacity: {
+                        draw: function() {
+                            barChart("chart-area", "capacity", data.cc);
+                        }
+                    }
+                }
+            })();
+
+            $(function() {
+
+                var itemTemplate = $("#item-tmpl").html();
+                Mustache.parse(itemTemplate);
+
+                $.ajax({
+                    url: "http://m.mobile.de/svc/r/makes/Car",
+                    dataType: "jsonp",
+                    cache: true,
+                    jsonp: "_jsonp"
+                }).done(function(data) {
+                    var options = $("#select-makes");
+                    $.each(data.makes, function(index, make) {
+                        options.append($("<option />").val(make.i).text(make.n));
+                    });
+                });
+
+                $.ajax({
+                    url: "http://m.mobile.de/svc/r/Car?_lang=en",
+                    dataType: "jsonp",
+                    cache: true,
+                    jsonp: "_jsonp"
+                }).done(function(data) {
+                    render("checkbox", "form-categories", data.categories, "c", "Categories");
+                    render("checkbox", "form-fuels", data.fuels, "ft", "Fuels");
+                    render("checkbox", "form-gears", data.gears, "tr", "Gears");
+                    render("checkbox", "form-colors", data.colors, "ecol", "Colors");
+                    render("radio",    "form-climatisations", data.climatisations, "clim", "Climatisations");
+                });
+
+                $(document).on("change", "#search-form :input", function(event) {
+                    $("#chart-area").empty();
+                    doSearch();
+                    event.preventDefault();
+                });
+
+                doSearch();
+
+                var chartArea = $('<div id="chart-area"></div>');
+                $(".chartable").popover({
+                    html: true,
+                    container: 'body',
+                    content: chartArea
+                }).on('inserted.bs.popover', function() {
+                    var c = $(this).data("chart");
+                    charts[c].draw();
+                }).on('hidden.bs.popover', function() {
+                    $("#chart-area").empty();
+                });
+
+                function doSearch() {
+                    var q, search, stats;
+
+                    q = $("#search-form :input").filter(function(index, element) {
+                                return $(element).val() != "";
+                    }).serializeArray();
+
+                    search = $.ajax({
+                        url: "http://m.mobile.de/svc/s?psz=20",
+                        data: q
+                    });
+
+                    stats = $.ajax({
+                        url: "http://m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml,ecol,tr,clim",
+                        data: q
+                    });
+
+                    $.when(search, stats).done(function(r1, r2) {
+                        handleSearch(r1[0], r2[0]);
+                        charts.setData(r2[0].aggregations);
+                    });
+
+                    function handleSearch(res, stats) {
+                        $("#num-search-results").text(res.numResultsTotal);
+                        var div = $("#search-result").empty();
+
+                        $.each(res.items, function(index, item) {
+                            item.fv = {
+                                pw: mark(item.powerKw, stats.aggregations.pw, math.greaterThan(95)),
+                                cc: mark(item.cubicCapacity, stats.aggregations.cc, math.greaterThan(95)),
+                                ml: mark(item.mileage, stats.aggregations.ml, math.lessThan(20))
+                            }
+                            div.append($("<div />").addClass("well").html(Mustache.render(itemTemplate, item)));
+                        });
+                    }
+                }
+
+                function mark(val, percentiles, predicate) {
+                    var perc = math.pmax(val, percentiles);
+                    if (predicate(perc)) return {
+                        p: perc
+                    };
+                }
+
+                function render(type, id, values, name, label) {
+                    var options = $("#" + id);
+                    $.each(values, function(index, item) {
+                        var input = $('<input type="' + type + '">').attr("name", name).val(item.i);
+                        options.append(
+                            $('<div class="' + type + '">')
+                                .append(
+                                    $('<label>')
+                                        .append(input)
+                                        .append(item.n)));
+                    });
+                }
             });
         </script>
     </head>
