@@ -38,23 +38,30 @@
                 <div class="col-md-12">
                     {{#powerKw}}
                     <div{{#fv.pw}} class="text-danger"{{/fv.pw}}>
-                        {{powerKw}}kW
+                        {{.}}&thinsp;kW
                     </div>
                     {{/powerKw}}
 
                     {{#cubicCapacity}}
                     <div{{#fv.cc}} class="text-danger"{{/fv.cc}}>
-                        {{cubicCapacity}}ccm
+                        {{.}}&thinsp;ccm
                     </div>
                     {{/cubicCapacity}}
 
                     {{#mileage}}
                     <div{{#fv.ml}} class="text-danger"{{/fv.ml}}>
-                        {{mileage}}km
+                        {{.}}&thinsp;km
                     </div>
                     {{/mileage}}
                 </div>
             </div>
+            {{#hist.fe}}
+            <div class="row">
+                <div class="col-md-12">
+                    {{.}}
+                </div>
+            </div>
+            {{/hist.fe}}
         </script>
 
 
@@ -150,6 +157,11 @@
                             pieChart("chart-area", "Climatisation", data.clim);
                         }
                     },
+                    feature: {
+                        draw: function() {
+                            pieChart("chart-area", "Feature", data.fe);
+                        }
+                    },
 
                     // bar charts
                     power: {
@@ -168,6 +180,38 @@
                         }
                     }
                 }
+            })();
+
+
+            var pager = (function() {
+                var numResults,
+                    ps = 0;
+
+                return {
+                    current: function(val) {
+                        if (val >= 0) {
+                            ps = val;
+                        }
+                        return ps;
+                    },
+                    previous: function() {
+                        if (ps >= 20) {
+                            return ps - 20;
+                        }
+                    },
+                    next: function() {
+                        if (ps + 20 < numResults) {
+                            return ps + 20;
+                        }
+                    },
+                    update: function(val) {
+                        numResults = val;
+                    },
+                    reset: function() {
+                        numResults = undefined;
+                        ps = 0;
+                    }
+                };
             })();
 
             $(function() {
@@ -197,13 +241,28 @@
                     render("checkbox", "form-fuels", data.fuels, "ft", "Fuels");
                     render("checkbox", "form-gears", data.gears, "tr", "Gears");
                     render("checkbox", "form-colors", data.colors, "ecol", "Colors");
+                    render("checkbox", "form-features", data.features, "fe", "Features");
                     render("radio",    "form-climatisations", data.climatisations, "clim", "Climatisations");
                 });
 
                 $(document).on("change", "#search-form :input", function(event) {
-                    $("#chart-area").empty();
+                    pager.reset();
                     doSearch();
                     event.preventDefault();
+                });
+
+                $(".next").on("click", function(e) {
+                    if (pager.next() >= 0) {
+                        pager.current(pager.next());
+                        doSearch();
+                    }
+                });
+
+                $(".previous").on("click", function(e) {
+                    if (pager.previous() >= 0) {
+                        pager.current(pager.previous());
+                        doSearch();
+                    }
                 });
 
                 doSearch();
@@ -220,6 +279,7 @@
                     $("#chart-area").empty();
                 });
 
+
                 function doSearch() {
                     var q, search, stats;
 
@@ -228,12 +288,12 @@
                     }).serializeArray();
 
                     search = $.ajax({
-                        url: "http://m.mobile.de/svc/s?psz=20",
+                        url: "http://m.mobile.de/svc/s?ps=" + pager.current(),
                         data: q
                     });
 
                     stats = $.ajax({
-                        url: "http://m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml,ecol,tr,clim",
+                        url: "http://m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml,ecol,tr,clim,fe",
                         data: q
                     });
 
@@ -243,18 +303,51 @@
                     });
 
                     function handleSearch(res, stats) {
+                        pager.update(res.numResultsTotal);
+                        if (pager.previous() >= 0) {
+                            $(".previous").removeClass("disabled");
+                        } else {
+                            $(".previous").addClass("disabled");
+                        }
+                        if (pager.next() >= 0) {
+                            $(".next").removeClass("disabled");
+                        } else {
+                            $(".next").addClass("disabled");
+                        }
+
                         $("#num-search-results").text(res.numResultsTotal);
                         var div = $("#search-result").empty();
 
                         $.each(res.items, function(index, item) {
+                            item.hist = {
+                                fe: ofInterest(item.features, hist(stats.aggregations.fe, res.numResultsTotal))
+                            };
                             item.fv = {
                                 pw: mark(item.powerKw, stats.aggregations.pw, math.greaterThan(95)),
                                 cc: mark(item.cubicCapacity, stats.aggregations.cc, math.greaterThan(95)),
                                 ml: mark(item.mileage, stats.aggregations.ml, math.lessThan(20))
-                            }
+                            };
                             div.append($("<div />").addClass("well").html(Mustache.render(itemTemplate, item)));
                         });
                     }
+                }
+
+                function ofInterest(elems, hist) {
+                    return elems.filter(function(e) {
+                        return hist.has(e);
+                    }).map(function(e) {
+                        return e.toLowerCase();
+                    }).join(", ");
+                }
+
+                function hist(counts, numResultsTotal) {
+                    var hist = [];
+                    $.each(counts, function(i, kv) {
+                        if (100 * kv.count / numResultsTotal < 25.0) {
+                            hist.push(kv.key);
+                        }
+                    });
+                    return new Set(hist);
                 }
 
                 function mark(val, percentiles, predicate) {
@@ -341,13 +434,27 @@
                                 <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-colors" aria-expanded="false"></span>
                                 <div class="collapse" id="form-colors" aria-expanded="false" style="height: 0px;"></div>
                             </div>
+
+                            <div class="form-group">
+                                <span class="chartable" data-chart="feature">Features</span>
+                                <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-features" aria-expanded="false"></span>
+                                <div class="collapse" id="form-features" aria-expanded="false" style="height: 0px;"></div>
+                            </div>
                         </div>
 
                     </form>
                 </div>
                 <div class="col-md-5">
                     <div id="search-result-head"><h4>Results <span id="num-search-results" class="badge"></span></h4></div>
-                    <div id="search-result" class="container-fluid"></div>
+                    <div id="nav-top">
+                       <nav>
+                          <ul class="pager">
+                            <li class="previous"><a href="#"><span aria-hidden="true">&larr;</span> Older</a></li>
+                            <li class="next"><a href="#">Newer <span aria-hidden="true">&rarr;</span></a></li>
+                          </ul>
+                        </nav>
+                    </div>
+                    <div id="search-result"></div>
                 </div>
             </div>
         </div>
