@@ -9,11 +9,11 @@
         <!-- Optional theme -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
 
-        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
 
         <script src="https://www.google.com/jsapi"></script>
         <script type="text/javascript">google.load('visualization', '1.0', {'packages':['corechart']});</script>
-        <script src="http://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.1.3/mustache.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/mustache.js/2.1.3/mustache.min.js"></script>
 
         <style>
             .popover{
@@ -220,7 +220,7 @@
                 Mustache.parse(itemTemplate);
 
                 $.ajax({
-                    url: "http://m.mobile.de/svc/r/makes/Car",
+                    url: "//m.mobile.de/svc/r/makes/Car",
                     dataType: "jsonp",
                     cache: true,
                     jsonp: "_jsonp"
@@ -232,7 +232,7 @@
                 });
 
                 $.ajax({
-                    url: "http://m.mobile.de/svc/r/Car?_lang=en",
+                    url: "//m.mobile.de/svc/r/Car?_lang=en",
                     dataType: "jsonp",
                     cache: true,
                     jsonp: "_jsonp"
@@ -288,12 +288,12 @@
                     }).serializeArray();
 
                     search = $.ajax({
-                        url: "http://m.mobile.de/svc/s?ps=" + pager.current(),
+                        url: "//m.mobile.de/svc/s?ps=" + pager.current(),
                         data: q
                     });
 
                     stats = $.ajax({
-                        url: "http://m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml,ecol,tr,clim,fe",
+                        url: "//m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml,ecol,tr,clim,fe",
                         data: q
                     });
 
