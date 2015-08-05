@@ -100,8 +100,7 @@
 
             var charts = (function() {
 
-                var data = {"c":[{"key":"Limousine","count":472429},{"key":"EstateCar","count":287053},{"key":"SmallCar","count":219405},{"key":"OffRoad","count":170982},{"key":"Van","count":168570},{"key":"Cabrio","count":80475},{"key":"SportsCar","count":69134},{"key":"OtherCar","count":28473}]};
-
+                var data = {};
 
                 function keyCountData(v) {
                     return [v.key, v.count];
@@ -237,8 +236,28 @@
                 }).done(function(data) {
                     var options = $("#select-makes");
                     $.each(data.makes, function(index, make) {
-                        options.append($("<option />").val(make.i).text(make.n));
+                        options.append($("<option>").val(make.i).text(make.n));
                     });
+                });
+
+
+                $("#select-makes").on("change", function(e) {
+                    var makeId = $(this).val();
+                    var options = $("#select-models").empty().append($('<option>').val("").text("Any"));
+                    if (makeId != "") {
+                        $.ajax({
+                            url: "//m.mobile.de/svc/r/models/" + makeId,
+                            dataType: "jsonp",
+                            cache: true,
+                            jsonp: "_jsonp"
+                        }).done(function(data) {
+                            $.each(data.models, function(index, model) {
+                                if (!model.g) {
+                                    options.append($("<option>").val(model.i).text(model.n))
+                                }
+                            });
+                        });
+                    }
                 });
 
                 $.ajax({
@@ -247,12 +266,15 @@
                     cache: true,
                     jsonp: "_jsonp"
                 }).done(function(data) {
-                    render("checkbox", "form-categories", data.categories, "c", "Categories");
-                    render("checkbox", "form-fuels", data.fuels, "ft", "Fuels");
-                    render("checkbox", "form-gears", data.gears, "tr", "Gears");
-                    render("checkbox", "form-colors", data.colors, "ecol", "Colors");
-                    render("checkbox", "form-features", data.features, "fe", "Features");
-                    render("radio",    "form-climatisations", data.climatisations, "clim", "Climatisations");
+                    render("checkbox", "form-categories", data.categories, "c");
+                    render("checkbox", "form-fuels", data.fuels, "ft");
+                    render("checkbox", "form-gears", data.gears, "tr");
+                    render("checkbox", "form-colors", data.colors, "ecol");
+                    render("checkbox", "form-park-assists", [
+                        {i: "REAR_SENSORS",  n: "Rear Sensors"},
+                        {i: "FRONT_SENSORS", n: "Front Sensors"}], "pa");
+                    render("checkbox", "form-features", data.features, "fe");
+                    render("radio",    "form-climatisations", data.climatisations, "clim");
                 });
 
                 $(document).on("change", "#search-form :input", function(event) {
@@ -331,7 +353,12 @@
                         var hist = {
                             features: histogramm(stats.aggregations.fe, res.numResultsTotal)
                         };
-                        div.append($("<div>").addClass("well").text());
+
+                        var feMap = toMap(stats.aggregations.fe);
+                        $("#form-features").find("label span").each(function(i, span) {
+                            var key = $(span).data('key');
+                            $(span).text("(" + feMap[key] + ")");
+                        });
 
                         $.each(res.items, function(index, item) {
                             item.hist = {
@@ -345,6 +372,14 @@
                             div.append($("<div>").addClass("well").html(Mustache.render(itemTemplate, item)));
                         });
                     }
+                }
+
+                function toMap(aggs) {
+                    var obj = {};
+                    $.each(aggs, function(i, agg) {
+                        obj[agg.key] = agg.count;
+                    });
+                    return obj;
                 }
 
                 function ofInterest(elems, hist) {
@@ -375,16 +410,22 @@
                     };
                 }
 
-                function render(type, id, values, name, label) {
+                function render(type, id, values, name) {
                     var options = $("#" + id);
+                    if (type === "radio") {
+                        options.append($('<div class="radio"><label><input type="radio" value="" name="' + name + '">Any</label></div>'));
+                    }
                     $.each(values, function(index, item) {
                         var input = $('<input type="' + type + '">').attr("name", name).val(item.i);
+
                         options.append(
                             $('<div class="' + type + '">')
                                 .append(
                                     $('<label>')
                                         .append(input)
-                                        .append(item.n)));
+                                        .append(item.n)
+                                        .append(document.createTextNode(" "))
+                                        .append($("<span>").data('key', item.i))));
                     });
                 }
             });
@@ -392,13 +433,13 @@
     </head>
 
     <body>
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-2">
-                    <form id="search-form">
-                        <input type="hidden" name="_raw" value="1">
-                        <input type="hidden" name="vc" value="Car">
+        <form id="search-form">
+            <input type="hidden" name="_raw" value="1">
+            <input type="hidden" name="vc" value="Car">
 
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <input type="radio" name="con" value=""> Any
                             <input type="radio" name="con" value="USED"> Used
@@ -406,9 +447,15 @@
                         </div>
 
                         <div class="form-group">
-                            Make
+                            <label for="select-makes">Make</label>
                             <select name="mk" id="select-makes">
                                 <option value="">Any</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="select-models">Model</label>
+                            <select name="md" id="select-models">
                             </select>
                         </div>
 
@@ -438,7 +485,8 @@
                             <div class="form-group">
                                 <span class="chartable" data-chart="climatisation">Climatisation</span>
                                 <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-climatisations" aria-expanded="false"></span>
-                                <div class="collapse" id="form-climatisations" aria-expanded="false" style="height: 0px;"></div>
+                                <div class="collapse" id="form-climatisations" aria-expanded="false" style="height: 0px;">
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -454,28 +502,34 @@
                             </div>
 
                             <div class="form-group">
-                                <span class="chartable" data-chart="feature">Features</span>
-                                <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-features" aria-expanded="false"></span>
-                                <div class="collapse" id="form-features" aria-expanded="false" style="height: 0px;"></div>
+                                <span>Park Assists</span>
+                                <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-park-assists" aria-expanded="false"></span>
+                                <div class="collapse" id="form-park-assists" aria-expanded="false" style="height: 0px;"></div>
                             </div>
                         </div>
-
-                    </form>
-                </div>
-                <div class="col-md-5">
-                    <div id="nav-top">
-                       <nav>
-                          <ul class="pager">
-                            <li class="previous"><a href="#"><span aria-hidden="true">&larr;</span> Previous</a></li>
-                            <li class="badge" id="num-search-results"></li>
-                            <li class="next"><a href="#">More <span aria-hidden="true">&rarr;</span></a></li>
-                          </ul>
-                        </nav>
                     </div>
-                    <div id="search-result" style="overflow:scroll; height:800px"></div>
+                    <div class="col-md-6">
+                        <div id="nav-top">
+                           <nav>
+                              <ul class="pager">
+                                <li class="previous"><a href="#"><span aria-hidden="true">&larr;</span> Previous</a></li>
+                                <li class="badge" id="num-search-results"></li>
+                                <li class="next"><a href="#">More <span aria-hidden="true">&rarr;</span></a></li>
+                              </ul>
+                            </nav>
+                        </div>
+                        <div id="search-result"></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <span class="chartable" data-chart="feature">Features</span>
+                            <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-features" aria-expanded="false"></span>
+                            <div class="collapse" id="form-features" aria-expanded="false" style="height: 0px;"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </form>
         <!-- Latest compiled and minified JavaScript -->
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
     </body>
