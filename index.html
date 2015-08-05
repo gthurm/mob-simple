@@ -9,12 +9,17 @@
         <!-- Optional theme -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
 
-        <script src="http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
 
         <script src="https://www.google.com/jsapi"></script>
         <script type="text/javascript">google.load('visualization', '1.0', {'packages':['corechart']});</script>
-        <script src="http://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.1.3/mustache.min.js"></script>
+        <script src="//cdnjs.cloudflare.com/ajax/libs/mustache.js/2.1.3/mustache.min.js"></script>
 
+        <style>
+            .popover {
+               max-width: 100%;
+            }
+        </style>
 
         <script id="item-tmpl" type="x-tmpl-mustache">
             <div class="row">
@@ -32,212 +37,91 @@
                 <div class="col-md-12">
                     {{#powerKw}}
                     <div{{#fv.pw}} class="text-danger"{{/fv.pw}}>
-                        {{powerKw}}kW
+                        {{.}}&thinsp;kW
                     </div>
                     {{/powerKw}}
 
                     {{#cubicCapacity}}
                     <div{{#fv.cc}} class="text-danger"{{/fv.cc}}>
-                        {{cubicCapacity}}ccm
+                        {{.}}&thinsp;ccm
                     </div>
                     {{/cubicCapacity}}
 
                     {{#mileage}}
                     <div{{#fv.ml}} class="text-danger"{{/fv.ml}}>
-                        {{mileage}}km
+                        {{.}}&thinsp;km
                     </div>
                     {{/mileage}}
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-12">
+                    {{#hist.fe}}
+                        <span class="label label-success">{{.}}</span>
+                    {{/hist.fe}}
                 </div>
             </div>
         </script>
 
 
         <script type="text/javascript">
-            var P = {
 
-                toArray: function (v) {
-                    var key = Object.keys(v)[0];
-                    return [key, v[key]];
-                },
-
-                pmax: function(val, percentiles) {
-                    if (!percentiles) return;
-                    var max = [0, 0];
-                    $.each(percentiles.map(this.toArray), function(i, p) {
-                        if (val > max[1] || val >= p[1]) max = p;
-                    });
-                    return max;
-                },
-
-                lessThan: function(threshold) {
-                    return function (perc) {
-                        return perc[0] <= threshold;
-                    };
-                },
-
-                greaterThan: function(threshold) {
-                    return function (perc) {
-                        return perc[0] >= threshold;
-                    };
-                }
-            };
-
-            var state = {
-                aggs: {}
-            };
-
-            $(function() {
-
-                var itemTemplate = $("#item-tmpl").html();
-                Mustache.parse(itemTemplate);
-
-                $.ajax({
-                    url: "http://m.mobile.de/svc/r/makes/Car",
-                })
-                .done(function(data) {
-                    var options = $("#select-makes");
-                    $.each(data.makes, function(index, make) {
-                        options.append($("<option />").val(make.i).text(make.n));
-                    });
-                });
-
-                $.ajax({
-                    url: "http://m.mobile.de/svc/r/Car?_lang=en",
-                })
-                .done(function(data) {
-                    renderCheckBox("form-categories", data.categories, "c", "Categories");
-                    renderCheckBox("form-fuels", data.fuels, "ft", "Fuels");
-                    renderCheckBox("form-gears", data.gears, "tr", "Gears");
-                    renderCheckBox("form-colors", data.colors, "ecol", "Colors");
-                    renderRadioBox("form-climatisations", data.climatisations, "clim", "Climatisations");
-                });
-
-
-                $(document).on("change", "#search-form :input", function(event) {
-                    $("#chart-area").empty();
-                    doSearch();
-                    event.preventDefault();
-                });
-
-                doSearch();
-
-                var charts = {
-                    // pie charts
-                    category:   {draw: function() {
-                        pieChart("chart-area", "category", state.aggs.c);
-                    }},
-                    gear:   {draw: function() {
-                        pieChart("chart-area", "gear", state.aggs.tr);
-                    }},
-                    fuel: {draw: function() {
-                        pieChart("chart-area", "fuel", state.aggs.ft);
-                    }},
-                    color: {draw: function() {
-                        pieChart("chart-area", "color", state.aggs.ecol);
-                    }},
-                    climatisations: {draw: function() {
-                        pieChart("chart-area", "Climatisation", state.aggs.clim);
-                    }},
-                    // bar charts
-                    power: {draw: function() {
-                        barChart("chart-area", "power", state.aggs.pw);
-                    }},
-                    price: {draw: function() {
-                        barChart("chart-area", "price", state.aggs.p);
-                    }},
-                    cubicCapacity: {draw: function() {
-                        barChart("chart-area", "category", state.aggs.cc);
-                    }},
-                };
-
-                $(document).on("click", ".chartable", function(event) {
-                    var chart = charts[$(this).data("chart")];
-                    chart.draw();
-                });
-
-                function doSearch() {
-                    var q, search, stats;
-
-                    q =  $("#search-form :input").filter(function(index, element) {
-                                return $(element).val() != "";
-                    }).serializeArray();
-
-                    search = $.ajax({
-                        url: "http://m.mobile.de/svc/s?psz=50",
-                        data: q
-                    });
-
-                    stats = $.ajax({
-                        url: "http://m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml,ecol,tr,clim",
-                        data: q
-                    });
-
-                    $.when(search, stats).done(function(r1, r2) {
-                        handleSearch(r1[0], r2[0]);
-                        state.aggs = r2[0].aggregations;
-                    });
-
-                    function handleSearch(res, stats) {
-                        $("#num-search-results").text(res.numResultsTotal);
-                        var div = $("#search-result").empty();
-
-                        $.each(res.items, function(index, item) {
-                            item.fv = {
-                                pw: mark(item.powerKw, stats.aggregations.pw, P.greaterThan(95)),
-                                cc: mark(item.cubicCapacity, stats.aggregations.cc, P.greaterThan(95)),
-                                ml: mark(item.mileage, stats.aggregations.ml, P.lessThan(20))
-                            }
-                            div.append($("<div />").addClass("well").html(Mustache.render(itemTemplate, item)));
-                        });
-                    }
-                }
-
-                function mark(val, percentiles, predicate) {
-                    var perc = P.pmax(val, percentiles);
-                    if (predicate(perc)) return {
-                        p: perc
-                    };
-                }
-
-                function renderCheckBox(id, values, name, label) {
-                    var options = $("#" + id);
-                    $.each(values, function(index, item) {
-                        var input = $('<input type="checkbox">').attr("name", name).val(item.i);
-                        options.append(
-                            $('<div class="checkbox">')
-                                .append(
-                                    $('<label>')
-                                        .append(input)
-                                        .append(item.n)));
-                    });
-                }
-
-                function renderRadioBox(id, values, name) {
-                    var options = $(id);
-                    $.each(values, function(index, item) {
-                        var input = $('<input type="radio">').attr("name", name).val(item.i);
-                        options.append(
-                            $('<div class="radio">')
-                                .append(
-                                    $('<label>')
-                                        .append(input)
-                                        .append(item.n)));
-                    });
-                }
-
-                function pieChart(id, name, values) {
-                    var chart = new google.visualization.PieChart(document.getElementById(id));
-                    chart.draw(makeTable(name, values, function(v) {
-                        return [v.key, v.count];
-                    }));
-                }
-
-                function barChart(id, name, values) {
-                    var chart = new google.visualization.BarChart(document.getElementById(id));
-                    chart.draw(makeTable(name, values,  function(v) {
+            var math = (function() {
+                return {
+                    toArray: function (v) {
                         var key = Object.keys(v)[0];
-                        return [key + "%", v[key]];
-                    }));
+                        return [key, v[key]];
+                    },
+
+                    pmax: function(val, percentiles) {
+                        if (!percentiles) return;
+                        var max = [0, 0];
+                        $.each(percentiles.map(this.toArray), function(i, p) {
+                            if (val > max[1] || val >= p[1]) max = p;
+                        });
+                        return max;
+                    },
+
+                    lessThan: function(threshold) {
+                        return function (perc) {
+                            return perc[0] <= threshold;
+                       };
+                    },
+
+                    greaterThan: function(threshold) {
+                        return function (perc) {
+                            return perc[0] >= threshold;
+                        };
+                    }
+                };
+            })();
+
+
+            var charts = (function() {
+
+                var data = {};
+
+                function keyCountData(v) {
+                    return [v.key, v.count];
+                }
+
+                function mapEntryData(v) {
+                    var key = Object.keys(v)[0];
+                    return [key + "%", v[key]];
+                }
+
+                function pieChart(id, name, values, trFn) {
+                    var chart = new google.visualization.PieChart(document.getElementById(id));
+                    chart.draw(makeTable(name, values, trFn));
+                }
+
+                function barChart(id, name, values, trFn) {
+                    var chart = new google.visualization.BarChart(document.getElementById(id));
+                    chart.draw(makeTable(name, values, trFn), {
+                        width:  400,
+                        height: 600,
+                    });
                 }
 
                 function makeTable(name, values, mapFn) {
@@ -248,18 +132,314 @@
                     return data;
                 }
 
+                return {
+
+                    setData: function(newData) {
+                        data = newData;
+                    },
+
+                    // pie charts
+                    category: {
+                        draw: function() {
+                            pieChart("chart-area", "category", data.c, keyCountData);
+                        }
+                    },
+                    gear: {
+                        draw: function() {
+                            pieChart("chart-area", "gear", data.tr, keyCountData);
+                        }
+                    },
+                    fuel: {
+                        draw: function() {
+                            pieChart("chart-area", "fuel", data.ft, keyCountData);
+                        }
+                    },
+                    color: {
+                        draw: function() {
+                            pieChart("chart-area", "color", data.ecol, keyCountData);
+                        }
+                    },
+                    climatisation: {
+                        draw: function() {
+                            pieChart("chart-area", "climatisation", data.clim, keyCountData);
+                        }
+                    },
+                    feature: {
+                        draw: function() {
+                            if (data.fe) {
+                                pieChart("chart-area", "feature", data.fe.slice(-20, -5), keyCountData);
+                            }
+                        }
+                    },
+
+                    // bar charts
+                    power: {
+                        draw: function() {
+                            barChart("chart-area", "power", data.pw, mapEntryData);
+                        }
+                    },
+                    price: {
+                        draw: function() {
+                            barChart("chart-area", "price", data.p, mapEntryData);
+                        }
+                    },
+                    cubicCapacity: {
+                        draw: function() {
+                            barChart("chart-area", "capacity", data.cc, mapEntryData);
+                        }
+                    }
+                }
+            })();
+
+
+            var pager = (function() {
+                var numResults,
+                    ps = 0;
+
+                return {
+                    current: function(val) {
+                        if (val >= 0) {
+                            ps = val;
+                        }
+                        return ps;
+                    },
+                    previous: function() {
+                        if (ps >= 20) {
+                            return ps - 20;
+                        }
+                    },
+                    next: function() {
+                        if (ps + 20 < numResults) {
+                            return ps + 20;
+                        }
+                    },
+                    update: function(val) {
+                        numResults = val;
+                    },
+                    reset: function() {
+                        numResults = undefined;
+                        ps = 0;
+                    }
+                };
+            })();
+
+            $(function() {
+
+                var itemTemplate = $("#item-tmpl").html();
+                Mustache.parse(itemTemplate);
+
+                $.ajax({
+                    url: "//m.mobile.de/svc/r/makes/Car",
+                    dataType: "jsonp",
+                    cache: true,
+                    jsonp: "_jsonp"
+                }).done(function(data) {
+                    var options = $("#select-makes");
+                    $.each(data.makes, function(index, make) {
+                        options.append($("<option>").val(make.i).text(make.n));
+                    });
+                });
+
+
+                $("#select-makes").on("change", function(e) {
+                    var makeId = $(this).val();
+                    var options = $("#select-models").empty().append($('<option>').val("").text("Any"));
+                    if (makeId != "") {
+                        $.ajax({
+                            url: "//m.mobile.de/svc/r/models/" + makeId,
+                            dataType: "jsonp",
+                            cache: true,
+                            jsonp: "_jsonp"
+                        }).done(function(data) {
+                            $.each(data.models, function(index, model) {
+                                if (!model.g) {
+                                    options.append($("<option>").val(model.i).text(model.n))
+                                }
+                            });
+                        });
+                    }
+                });
+
+                $.ajax({
+                    url: "//m.mobile.de/svc/r/Car?_lang=en",
+                    dataType: "jsonp",
+                    cache: true,
+                    jsonp: "_jsonp"
+                }).done(function(data) {
+                    render("checkbox", "form-categories", data.categories, "c");
+                    render("checkbox", "form-fuels", data.fuels, "ft");
+                    render("checkbox", "form-gears", data.gears, "tr");
+                    render("checkbox", "form-colors", data.colors, "ecol");
+                    render("checkbox", "form-park-assists", [
+                        {i: "REAR_SENSORS",  n: "Rear Sensors"},
+                        {i: "FRONT_SENSORS", n: "Front Sensors"}], "pa");
+                    render("checkbox", "form-features", data.features, "fe");
+                    render("radio",    "form-climatisations", data.climatisations, "clim");
+                });
+
+                $(document).on("change", "#search-form :input", function(event) {
+                    pager.reset();
+                    doSearch();
+                    event.preventDefault();
+                });
+
+                $(".next").on("click", function(e) {
+                    if (pager.next() >= 0) {
+                        pager.current(pager.next());
+                        doSearch();
+                    }
+                });
+
+                $(".previous").on("click", function(e) {
+                    if (pager.previous() >= 0) {
+                        pager.current(pager.previous());
+                        doSearch();
+                    }
+                });
+
+                doSearch();
+
+                var chartArea = $('<div id="chart-area"></div>');
+                $(".chartable").popover({
+                    html: true,
+                    container: 'body',
+                    content: chartArea
+                }).on('inserted.bs.popover', function() {
+                    var c = $(this).data("chart");
+                    charts[c].draw();
+                }).on('hidden.bs.popover', function() {
+                    $("#chart-area").empty();
+                });
+
+
+                function doSearch() {
+                    var q, search, stats;
+
+                    q = $("#search-form :input").filter(function(index, element) {
+                                return $(element).val() != "";
+                    }).serializeArray();
+
+                    search = $.ajax({
+                        url: "//m.mobile.de/svc/s?ps=" + pager.current(),
+                        data: q
+                    });
+
+                    stats = $.ajax({
+                        url: "//m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml,ecol,tr,clim,fe",
+                        data: q
+                    });
+
+                    $.when(search, stats).done(function(r1, r2) {
+                        handleSearch(r1[0], r2[0]);
+                        charts.setData(r2[0].aggregations);
+                    });
+
+                    function handleSearch(res, stats) {
+                        pager.update(res.numResultsTotal);
+
+                        if (pager.previous() >= 0) {
+                            $(".previous").removeClass("disabled");
+                        } else {
+                            $(".previous").addClass("disabled");
+                        }
+                        if (pager.next() >= 0) {
+                            $(".next").removeClass("disabled");
+                        } else {
+                            $(".next").addClass("disabled");
+                        }
+
+                        $("#num-search-results").text(res.numResultsTotal);
+                        var div = $("#search-result").empty();
+                        var hist = {
+                            features: histogramm(stats.aggregations.fe, res.numResultsTotal)
+                        };
+
+                        var feMap = toMap(stats.aggregations.fe);
+                        $("#form-features").find("label span").each(function(i, span) {
+                            var key = $(span).data('key');
+                            $(span).text("(" + feMap[key] + ")");
+                        });
+
+                        $.each(res.items, function(index, item) {
+                            item.hist = {
+                                fe: ofInterest(item.features, hist.features)
+                            };
+                            item.fv = {
+                                pw: mark(item.powerKw, stats.aggregations.pw, math.greaterThan(95)),
+                                cc: mark(item.cubicCapacity, stats.aggregations.cc, math.greaterThan(95)),
+                                ml: mark(item.mileage, stats.aggregations.ml, math.lessThan(20))
+                            };
+                            div.append($("<div>").addClass("well").html(Mustache.render(itemTemplate, item)));
+                        });
+                    }
+                }
+
+                function toMap(aggs) {
+                    var obj = {};
+                    $.each(aggs, function(i, agg) {
+                        obj[agg.key] = agg.count;
+                    });
+                    return obj;
+                }
+
+                function ofInterest(elems, hist) {
+                    return elems.filter(function(e) {
+                        return hist.has(e);
+                    }).map(function(e) {
+                        return e.toLowerCase();
+                    });
+                }
+
+                function histogramm(counts, numResultsTotal) {
+                    var hist = [];
+                    $.each(counts, function(i, kv) {
+                        var p = 100 * kv.count / numResultsTotal;
+                        //console.log(kv.key + ":" + p);
+                        if (p >= 2.0 && p <= 25.0) {
+                            hist.push(kv.key);
+                        }
+                    });
+                    //console.log(hist);
+                    return new Set(hist);
+                }
+
+                function mark(val, percentiles, predicate) {
+                    var perc = math.pmax(val, percentiles);
+                    if (predicate(perc)) return {
+                        p: perc
+                    };
+                }
+
+                function render(type, id, values, name) {
+                    var options = $("#" + id);
+                    if (type === "radio") {
+                        options.append($('<div class="radio"><label><input type="radio" value="" name="' + name + '">Any</label></div>'));
+                    }
+                    $.each(values, function(index, item) {
+                        var input = $('<input type="' + type + '">').attr("name", name).val(item.i);
+
+                        options.append(
+                            $('<div class="' + type + '">')
+                                .append(
+                                    $('<label>')
+                                        .append(input)
+                                        .append(item.n)
+                                        .append(document.createTextNode(" "))
+                                        .append($("<span>").data('key', item.i))));
+                    });
+                }
             });
         </script>
     </head>
 
     <body>
-        <div class="container-fluid">
-            <div class="row">
-                <div class="col-md-2">
-                    <form id="search-form">
-                        <input type="hidden" name="_raw" value="1">
-                        <input type="hidden" name="vc" value="Car">
+        <form id="search-form">
+            <input type="hidden" name="_raw" value="1">
+            <input type="hidden" name="vc" value="Car">
 
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-md-3">
                         <div class="form-group">
                             <input type="radio" name="con" value=""> Any
                             <input type="radio" name="con" value="USED"> Used
@@ -267,9 +447,15 @@
                         </div>
 
                         <div class="form-group">
-                            Make
+                            <label for="select-makes">Make</label>
                             <select name="mk" id="select-makes">
                                 <option value="">Any</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="select-models">Model</label>
+                            <select name="md" id="select-models">
                             </select>
                         </div>
 
@@ -297,9 +483,10 @@
                             </div>
 
                             <div class="form-group">
-                                <span class="chartable" data-chart="category">Climatisation</span>
+                                <span class="chartable" data-chart="climatisation">Climatisation</span>
                                 <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-climatisations" aria-expanded="false"></span>
-                                <div class="collapse" id="form-climatisation" aria-expanded="false" style="height: 0px;"></div>
+                                <div class="collapse" id="form-climatisations" aria-expanded="false" style="height: 0px;">
+                                </div>
                             </div>
 
                             <div class="form-group">
@@ -313,17 +500,36 @@
                                 <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-colors" aria-expanded="false"></span>
                                 <div class="collapse" id="form-colors" aria-expanded="false" style="height: 0px;"></div>
                             </div>
-                        </div>
 
-                    </form>
-                </div>
-                <div class="col-md-5">
-                    <div id="chart-area"></div>
-                    <div id="search-result-head"><h4>Results <span id="num-search-results" class="badge"></span></h4></div>
-                    <div id="search-result" class="container-fluid"></div>
+                            <div class="form-group">
+                                <span>Park Assists</span>
+                                <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-park-assists" aria-expanded="false"></span>
+                                <div class="collapse" id="form-park-assists" aria-expanded="false" style="height: 0px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div id="nav-top">
+                           <nav>
+                              <ul class="pager">
+                                <li class="previous"><a href="#"><span aria-hidden="true">&larr;</span> Previous</a></li>
+                                <li class="badge" id="num-search-results"></li>
+                                <li class="next"><a href="#">More <span aria-hidden="true">&rarr;</span></a></li>
+                              </ul>
+                            </nav>
+                        </div>
+                        <div id="search-result"></div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <span class="chartable" data-chart="feature">Features</span>
+                            <span class="glyphicon glyphicon-collapse-down pull-right collapsed" aria-hidden="true" data-toggle="collapse" data-target="#form-features" aria-expanded="false"></span>
+                            <div class="collapse" id="form-features" aria-expanded="false" style="height: 0px;"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </form>
         <!-- Latest compiled and minified JavaScript -->
         <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
     </body>
