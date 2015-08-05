@@ -16,9 +16,8 @@
         <script src="//cdnjs.cloudflare.com/ajax/libs/mustache.js/2.1.3/mustache.min.js"></script>
 
         <style>
-            .popover{
+            .popover {
                max-width: 100%;
-               width: 320;
             }
         </style>
 
@@ -55,17 +54,19 @@
                     {{/mileage}}
                 </div>
             </div>
-            {{#hist.fe}}
+
             <div class="row">
                 <div class="col-md-12">
-                    {{.}}
+                    {{#hist.fe}}
+                        <span class="label label-success">{{.}}</span>
+                    {{/hist.fe}}
                 </div>
             </div>
-            {{/hist.fe}}
         </script>
 
 
         <script type="text/javascript">
+
             var math = (function() {
                 return {
                     toArray: function (v) {
@@ -102,19 +103,26 @@
                 var data = {"c":[{"key":"Limousine","count":472429},{"key":"EstateCar","count":287053},{"key":"SmallCar","count":219405},{"key":"OffRoad","count":170982},{"key":"Van","count":168570},{"key":"Cabrio","count":80475},{"key":"SportsCar","count":69134},{"key":"OtherCar","count":28473}]};
 
 
-                function pieChart(id, name, values) {
-                    var chart = new google.visualization.PieChart(document.getElementById(id));
-                    chart.draw(makeTable(name, values, function(v) {
-                        return [v.key, v.count];
-                    }));
+                function keyCountData(v) {
+                    return [v.key, v.count];
                 }
 
-                function barChart(id, name, values) {
+                function mapEntryData(v) {
+                    var key = Object.keys(v)[0];
+                    return [key + "%", v[key]];
+                }
+
+                function pieChart(id, name, values, trFn) {
+                    var chart = new google.visualization.PieChart(document.getElementById(id));
+                    chart.draw(makeTable(name, values, trFn));
+                }
+
+                function barChart(id, name, values, trFn) {
                     var chart = new google.visualization.BarChart(document.getElementById(id));
-                    chart.draw(makeTable(name, values,  function(v) {
-                        var key = Object.keys(v)[0];
-                        return [key + "%", v[key]];
-                    }));
+                    chart.draw(makeTable(name, values, trFn), {
+                        width:  400,
+                        height: 600,
+                    });
                 }
 
                 function makeTable(name, values, mapFn) {
@@ -134,49 +142,51 @@
                     // pie charts
                     category: {
                         draw: function() {
-                            pieChart("chart-area", "category", data.c);
+                            pieChart("chart-area", "category", data.c, keyCountData);
                         }
                     },
                     gear: {
                         draw: function() {
-                            pieChart("chart-area", "gear", data.tr);
+                            pieChart("chart-area", "gear", data.tr, keyCountData);
                         }
                     },
                     fuel: {
                         draw: function() {
-                            pieChart("chart-area", "fuel", data.ft);
+                            pieChart("chart-area", "fuel", data.ft, keyCountData);
                         }
                     },
                     color: {
                         draw: function() {
-                            pieChart("chart-area", "color", data.ecol);
+                            pieChart("chart-area", "color", data.ecol, keyCountData);
                         }
                     },
                     climatisation: {
                         draw: function() {
-                            pieChart("chart-area", "Climatisation", data.clim);
+                            pieChart("chart-area", "climatisation", data.clim, keyCountData);
                         }
                     },
                     feature: {
                         draw: function() {
-                            pieChart("chart-area", "Feature", data.fe);
+                            if (data.fe) {
+                                pieChart("chart-area", "feature", data.fe.slice(-20, -5), keyCountData);
+                            }
                         }
                     },
 
                     // bar charts
                     power: {
                         draw: function() {
-                            barChart("chart-area", "power", data.pw);
+                            barChart("chart-area", "power", data.pw, mapEntryData);
                         }
                     },
                     price: {
                         draw: function() {
-                            barChart("chart-area", "price", data.p);
+                            barChart("chart-area", "price", data.p, mapEntryData);
                         }
                     },
                     cubicCapacity: {
                         draw: function() {
-                            barChart("chart-area", "capacity", data.cc);
+                            barChart("chart-area", "capacity", data.cc, mapEntryData);
                         }
                     }
                 }
@@ -304,6 +314,7 @@
 
                     function handleSearch(res, stats) {
                         pager.update(res.numResultsTotal);
+
                         if (pager.previous() >= 0) {
                             $(".previous").removeClass("disabled");
                         } else {
@@ -317,17 +328,21 @@
 
                         $("#num-search-results").text(res.numResultsTotal);
                         var div = $("#search-result").empty();
+                        var hist = {
+                            features: histogramm(stats.aggregations.fe, res.numResultsTotal)
+                        };
+                        div.append($("<div>").addClass("well").text());
 
                         $.each(res.items, function(index, item) {
                             item.hist = {
-                                fe: ofInterest(item.features, hist(stats.aggregations.fe, res.numResultsTotal))
+                                fe: ofInterest(item.features, hist.features)
                             };
                             item.fv = {
                                 pw: mark(item.powerKw, stats.aggregations.pw, math.greaterThan(95)),
                                 cc: mark(item.cubicCapacity, stats.aggregations.cc, math.greaterThan(95)),
                                 ml: mark(item.mileage, stats.aggregations.ml, math.lessThan(20))
                             };
-                            div.append($("<div />").addClass("well").html(Mustache.render(itemTemplate, item)));
+                            div.append($("<div>").addClass("well").html(Mustache.render(itemTemplate, item)));
                         });
                     }
                 }
@@ -337,16 +352,19 @@
                         return hist.has(e);
                     }).map(function(e) {
                         return e.toLowerCase();
-                    }).join(", ");
+                    });
                 }
 
-                function hist(counts, numResultsTotal) {
+                function histogramm(counts, numResultsTotal) {
                     var hist = [];
                     $.each(counts, function(i, kv) {
-                        if (100 * kv.count / numResultsTotal < 25.0) {
+                        var p = 100 * kv.count / numResultsTotal;
+                        //console.log(kv.key + ":" + p);
+                        if (p >= 2.0 && p <= 25.0) {
                             hist.push(kv.key);
                         }
                     });
+                    //console.log(hist);
                     return new Set(hist);
                 }
 
@@ -445,16 +463,16 @@
                     </form>
                 </div>
                 <div class="col-md-5">
-                    <div id="search-result-head"><h4>Results <span id="num-search-results" class="badge"></span></h4></div>
                     <div id="nav-top">
                        <nav>
                           <ul class="pager">
-                            <li class="previous"><a href="#"><span aria-hidden="true">&larr;</span> Older</a></li>
-                            <li class="next"><a href="#">Newer <span aria-hidden="true">&rarr;</span></a></li>
+                            <li class="previous"><a href="#"><span aria-hidden="true">&larr;</span> Previous</a></li>
+                            <li class="badge" id="num-search-results"></li>
+                            <li class="next"><a href="#">More <span aria-hidden="true">&rarr;</span></a></li>
                           </ul>
                         </nav>
                     </div>
-                    <div id="search-result"></div>
+                    <div id="search-result" style="overflow:scroll; height:800px"></div>
                 </div>
             </div>
         </div>
