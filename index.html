@@ -225,6 +225,8 @@
 
             $(function() {
 
+                var sortOrder = "UP";
+
                 var itemTemplate = $("#item-tmpl").html();
                 Mustache.parse(itemTemplate);
 
@@ -297,6 +299,19 @@
                     }
                 });
 
+                $("#sort-order").on("click", function(e) {
+                    if (sortOrder === "UP") {
+                        sortOrder = "DOWN";
+                        $(this).removeClass("glyphicon-chevron-down");
+                        $(this).addClass("glyphicon-chevron-up");
+                    } else {
+                        sortOrder = "UP";
+                        $(this).removeClass("glyphicon-chevron-up");
+                        $(this).addClass("glyphicon-chevron-down");
+                    }
+                    doSearch();
+                });
+
                 doSearch();
 
                 var chartArea = $('<div id="chart-area"></div>');
@@ -320,7 +335,7 @@
                     }).serializeArray();
 
                     search = $.ajax({
-                        url: "//m.mobile.de/svc/s?ps=" + pager.current(),
+                        url: "//m.mobile.de/svc/s?ps=" + pager.current() + "&od=" + sortOrder,
                         data: q
                     });
 
@@ -514,6 +529,7 @@
                               <ul class="pager">
                                 <li class="previous"><a href="#"><span aria-hidden="true">&larr;</span> Previous</a></li>
                                 <li class="badge" id="num-search-results"></li>
+                                <li><span id="sort-order" class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span></li>
                                 <li class="next"><a href="#">More <span aria-hidden="true">&rarr;</span></a></li>
                               </ul>
                             </nav>
