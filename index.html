@@ -340,7 +340,7 @@
                     });
 
                     stats = $.ajax({
-                        url: "//m.mobile.de/svc/s?psz=0&aggs=c,ft,pw,cc,ml,ecol,tr,clim,fe",
+                        url: "//m.mobile.de/svc/s?psz=0&aggs=pMin,c,ft,pw,cc,ml,ecol,tr,clim,fe",
                         data: q
                     });
 
@@ -369,11 +369,11 @@
                             features: histogramm(stats.aggregations.fe, res.numResultsTotal)
                         };
 
-                        var feMap = toMap(stats.aggregations.fe);
-                        $("#form-features").find("label span").each(function(i, span) {
-                            var key = $(span).data('key');
-                            $(span).text("(" + feMap[key] + ")");
-                        });
+                        updateAggregations(stats.aggregations.fe,   "#form-features");
+                        updateAggregations(stats.aggregations.ecol, "#form-colors");
+                        updateAggregations(stats.aggregations.c,    "#form-categories");
+                        updateAggregations(stats.aggregations.tr,   "#form-gears");
+                        updateAggregations(stats.aggregations.ft,   "#form-fuels");
 
                         $.each(res.items, function(index, item) {
                             item.hist = {
@@ -389,10 +389,26 @@
                     }
                 }
 
+                function updateAggregations(aggs, elementId) {
+                    var transformed = toMap(aggs);
+                    $(elementId).find("label span").each(function(i, span) {
+                        var key = $(span).data('key'),
+                            value = transformed[key];
+                        if (typeof value != "undefined") {
+                            $(span).text("(" + value.count + ", " + value.pMin + ")");
+                        } else {
+                            $(span).text("(n/a)");
+                        }
+                    });
+                }
+
                 function toMap(aggs) {
                     var obj = {};
                     $.each(aggs, function(i, agg) {
-                        obj[agg.key] = agg.count;
+                        obj[agg.key] = {
+                            count: agg.count,
+                            pMin: agg.pMin
+                        }
                     });
                     return obj;
                 }
