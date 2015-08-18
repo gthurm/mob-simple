@@ -6,10 +6,11 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css">
-        <!-- Optional theme -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
 
         <script src="//ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+        <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+        <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
 
         <script src="https://www.google.com/jsapi"></script>
         <script type="text/javascript">google.load('visualization', '1.0', {'packages':['corechart']});</script>
@@ -267,8 +268,24 @@
                         });
                         return new Set(hist);
                     }
-                };
+                }
             })(globals);
+
+            function makeSlider(name, scope) {
+                var span = $("label[for='" + name + "']").find("span.range");
+                $("#" + name).slider({
+                    range: true,
+                    min: 0,
+                    max: 100,
+                    values: [scope.range[0], scope.range[1]],
+                    slide: function(event, ui) {
+                        span.text(ui.values[0] + " - " + ui.values[1]);
+                        scope.range[0] = ui.values[0];
+                        scope.range[1] = ui.values[1];
+                    }
+                });
+                span.text(scope.range[0] + " - " + scope.range[1]);
+            }
 
             $(function() {
 
@@ -373,6 +390,9 @@
                     $("#chart-area").empty();
                 });
 
+
+                makeSlider("page-range", globals.page);
+                makeSlider("search-range", globals.search);
 
                 function doSearch() {
                     var q, search, stats, isNewCarSearch;
@@ -634,7 +654,18 @@
                             <div id="gear-chart"></div>
                             <div id="color-chart"></div>
                         </div>
-                        <div role="tabpanel" class="tab-pane" id="settings-tab">...</div>
+                        <div role="tabpanel" class="tab-pane" id="settings-tab">
+                            <div>
+                                <label for="page-range">
+                                    Page scope: <span class="range"></span><div id="page-range" style="width:300px; margin:15px"></div>
+                                </label>
+                            </div>
+                            <div>
+                                <label for="search-range">
+                                    Search scope:<span class="range"></span><div id="search-range" style="width:300px; margin:15px"></div>
+                                </label>
+                            </div>
+                        </div>
                       </div>
                     </div>
                     <div class="col-md-3">
