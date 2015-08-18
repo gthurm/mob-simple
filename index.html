@@ -57,15 +57,38 @@
 
             <div class="row">
                 <div class="col-md-12">
-                    {{#hist.fe}}
+                    {{#hist.search}}
                         <span class="label label-success">{{.}}</span>
-                    {{/hist.fe}}
+                    {{/hist.search}}
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-12">
+                    {{#hist.page}}
+                        <span class="label label-info">{{.}}</span>
+                    {{/hist.page}}
                 </div>
             </div>
         </script>
 
 
         <script type="text/javascript">
+
+            var globals = {
+                page: {
+                    range: [0.0, 40.0],
+                    filter: function(p) {
+                        return this.range[0] <= p && p <= this.range[1];
+                    }
+                },
+
+                search: {
+                    range: [2.0, 25.0],
+                    filter: function(p) {
+                        return this.range[0] <= p && p <= this.range[1];
+                    }
+                }
+            };
 
             var math = (function() {
                 return {
@@ -191,7 +214,6 @@
                 }
             })();
 
-
             var pager = (function() {
                 var numResults,
                     ps = 0;
@@ -222,6 +244,31 @@
                     }
                 };
             })();
+
+            var pageScope = (function(globals) {
+                return {
+                    hist: function(items) {
+                        var features = {};
+                        $.each(items, function(i, it) {
+                            $.each(it.features, function(ii, f) {
+                                if (features[f] === undefined)
+                                    features[f] = 1;
+                                else
+                                    features[f] += 1;
+                            });
+                        });
+
+                        var hist = [];
+                        $.each(features, function(i, f) {
+                            var p = f * 100.0 / items.length;
+                            if (globals.page.filter(p)) {
+                                hist.push(i);
+                            }
+                        });
+                        return new Set(hist);
+                    }
+                };
+            })(globals);
 
             $(function() {
 
@@ -328,11 +375,15 @@
 
 
                 function doSearch() {
-                    var q, search, stats;
+                    var q, search, stats, isNewCarSearch;
 
                     q = $("#search-form :input").filter(function(index, element) {
                                 return $(element).val() != "";
                     }).serializeArray();
+
+                    isNewCarSearch = q.filter(function(e) {
+                        return(e.name === "con" && e.value === 'NEW');
+                    }).length == 1;
 
                     search = $.ajax({
                         url: "//m.mobile.de/svc/s?ps=" + pager.current() + "&od=" + sortOrder,
@@ -364,10 +415,6 @@
                         }
 
                         $("#num-search-results").text(res.numResultsTotal);
-                        var div = $("#search-result").empty();
-                        var hist = {
-                            features: histogramm(stats.aggregations.fe, res.numResultsTotal)
-                        };
 
                         updateAggregations(stats.aggregations.fe,   "#form-features");
                         updateAggregations(stats.aggregations.ecol, "#form-colors");
@@ -375,10 +422,24 @@
                         updateAggregations(stats.aggregations.tr,   "#form-gears");
                         updateAggregations(stats.aggregations.ft,   "#form-fuels");
 
+                        var hist = {
+                            search: histogramm(stats.aggregations.fe, res.numResultsTotal),
+                            page: pageScope.hist(res.items)
+                        };
+                        var div = $("#search-result").empty();
                         $.each(res.items, function(index, item) {
+                            if (isNewCarSearch)
+                                item.features = item.features.filter(function(e) {
+                                    return e != 'HU_AU_NEU'
+                                        && e != 'FULL_SERVICE_HISTORY'
+                                        && e != 'WARRANTY'
+                                        && e != 'NONSMOKER_VEHICLE';});
+
                             item.hist = {
-                                fe: ofInterest(item.features, hist.features)
+                                search: ofInterest(item.features, hist.search),
+                                page: ofInterest(item.features, hist.page)
                             };
+
                             item.fv = {
                                 pw: mark(item.powerKw, stats.aggregations.pw, math.greaterThan(95)),
                                 cc: mark(item.cubicCapacity, stats.aggregations.cc, math.greaterThan(95)),
@@ -425,12 +486,10 @@
                     var hist = [];
                     $.each(counts, function(i, kv) {
                         var p = 100 * kv.count / numResultsTotal;
-                        //console.log(kv.key + ":" + p);
-                        if (p >= 2.0 && p <= 25.0) {
+                        if (globals.search.filter(p))
                             hist.push(kv.key);
-                        }
+
                     });
-                    //console.log(hist);
                     return new Set(hist);
                 }
 
