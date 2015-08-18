@@ -163,52 +163,52 @@
 
                     // pie charts
                     category: {
-                        draw: function() {
-                            pieChart("chart-area", "category", data.c, keyCountData);
+                        draw: function(dest) {
+                            pieChart(dest, "category", data.c, keyCountData);
                         }
                     },
                     gear: {
-                        draw: function() {
-                            pieChart("chart-area", "gear", data.tr, keyCountData);
+                        draw: function(dest) {
+                            pieChart(dest, "gear", data.tr, keyCountData);
                         }
                     },
                     fuel: {
-                        draw: function() {
-                            pieChart("chart-area", "fuel", data.ft, keyCountData);
+                        draw: function(dest) {
+                            pieChart(dest, "fuel", data.ft, keyCountData);
                         }
                     },
                     color: {
-                        draw: function() {
-                            pieChart("chart-area", "color", data.ecol, keyCountData);
+                        draw: function(dest) {
+                            pieChart(dest, "color", data.ecol, keyCountData);
                         }
                     },
                     climatisation: {
-                        draw: function() {
-                            pieChart("chart-area", "climatisation", data.clim, keyCountData);
+                        draw: function(dest) {
+                            pieChart(dest, "climatisation", data.clim, keyCountData);
                         }
                     },
                     feature: {
-                        draw: function() {
+                        draw: function(dest) {
                             if (data.fe) {
-                                pieChart("chart-area", "feature", data.fe.slice(-20, -5), keyCountData);
+                                pieChart(dest, "feature", data.fe.slice(-20, -5), keyCountData);
                             }
                         }
                     },
 
                     // bar charts
                     power: {
-                        draw: function() {
-                            barChart("chart-area", "power", data.pw, mapEntryData);
+                        draw: function(dest) {
+                            barChart(dest, "power", data.pw, mapEntryData);
                         }
                     },
                     price: {
-                        draw: function() {
-                            barChart("chart-area", "price", data.p, mapEntryData);
+                        draw: function(dest) {
+                            barChart(dest, "price", data.p, mapEntryData);
                         }
                     },
                     cubicCapacity: {
-                        draw: function() {
-                            barChart("chart-area", "capacity", data.cc, mapEntryData);
+                        draw: function(dest) {
+                            barChart(dest, "capacity", data.cc, mapEntryData);
                         }
                     }
                 }
@@ -368,7 +368,7 @@
                     content: chartArea
                 }).on('inserted.bs.popover', function() {
                     var c = $(this).data("chart");
-                    charts[c].draw();
+                    charts[c].draw("chart-area");
                 }).on('hidden.bs.popover', function() {
                     $("#chart-area").empty();
                 });
@@ -398,6 +398,11 @@
                     $.when(search, stats).done(function(r1, r2) {
                         handleSearch(r1[0], r2[0]);
                         charts.setData(r2[0].aggregations);
+                        charts.category.draw('c-chart');
+                        charts.fuel.draw('ft-chart');
+                        charts.climatisation.draw('clim-chart');
+                        charts.gear.draw('gear-chart');
+                        charts.color.draw('color-chart');
                     });
 
                     function handleSearch(res, stats) {
@@ -599,17 +604,38 @@
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div id="nav-top">
-                           <nav>
-                              <ul class="pager">
-                                <li class="previous"><a href="#"><span aria-hidden="true">&larr;</span> Previous</a></li>
-                                <li class="badge" id="num-search-results"></li>
-                                <li><span id="sort-order" class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span></li>
-                                <li class="next"><a href="#">More <span aria-hidden="true">&rarr;</span></a></li>
-                              </ul>
-                            </nav>
+                      <!-- Nav tabs -->
+                      <ul class="nav nav-tabs" role="tablist">
+                        <li role="presentation" class="active"><a href="#search-tab" role="tab" data-toggle="tab">Search</a></li>
+                        <li role="presentation"><a href="#chart-tab" role="tab" data-toggle="tab">Charts</a></li>
+                        <li role="presentation"><a href="#settings-tab" role="tab" data-toggle="tab">Settings</a></li>
+                      </ul>
+
+                      <!-- Tab panes -->
+                      <div class="tab-content">
+                        <div role="tabpanel" class="tab-pane active" id="search-tab">
+                            <div id="nav-top">
+                               <nav>
+                                  <ul class="pager">
+                                    <li class="previous"><a href="#"><span aria-hidden="true">&larr;</span> Previous</a></li>
+                                    <li class="badge" id="num-search-results"></li>
+                                    <li><span id="sort-order" class="glyphicon glyphicon-chevron-down" aria-hidden="true"></span></li>
+                                    <li class="next"><a href="#">More <span aria-hidden="true">&rarr;</span></a></li>
+                                  </ul>
+                                </nav>
+                            </div>
+                            <div id="search-result"></div>
                         </div>
-                        <div id="search-result"></div>
+                        <div role="tabpanel" class="tab-pane" id="chart-tab">
+                            <div id="ft-chart"></div>
+                            <div id="ft-chart"></div>
+                            <div id="c-chart"></div>
+                            <div id="clim-chart"></div>
+                            <div id="gear-chart"></div>
+                            <div id="color-chart"></div>
+                        </div>
+                        <div role="tabpanel" class="tab-pane" id="settings-tab">...</div>
+                      </div>
                     </div>
                     <div class="col-md-3">
                         <div class="form-group">
